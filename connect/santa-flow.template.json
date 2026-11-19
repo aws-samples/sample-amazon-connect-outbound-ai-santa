@@ -1,0 +1,188 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "set-logging",
+  "Metadata": {
+    "entryPointPosition": { "x": 40, "y": 40 },
+    "ActionMetadata": {
+      "set-logging": { "position": { "x": 160, "y": 40 } },
+      "set-recording": { "position": { "x": 400, "y": 40 } },
+      "set-language": { "position": { "x": 640, "y": 40 } },
+      "set-voice": { "position": { "x": 880, "y": 40 } },
+      "connect-assistant": { "position": { "x": 1120, "y": 40 } },
+      "lambda-start": {
+        "position": { "x": 160, "y": 300 },
+        "parameters": { "LambdaFunctionARN": { "displayName": "flow-handler" } },
+        "dynamicMetadata": { "action": false }
+      },
+      "check-start": { "position": { "x": 400, "y": 300 } },
+      "santa-bot": { "position": { "x": 640, "y": 300 } },
+      "check-tool": { "position": { "x": 880, "y": 300 } },
+      "lambda-deliver": {
+        "position": { "x": 1120, "y": 300 },
+        "parameters": { "LambdaFunctionARN": { "displayName": "flow-handler" } },
+        "dynamicMetadata": { "action": false, "wishlist": true, "behaviour": true, "summary": true }
+      },
+      "lambda-no-response": {
+        "position": { "x": 880, "y": 560 },
+        "parameters": { "LambdaFunctionARN": { "displayName": "flow-handler" } },
+        "dynamicMetadata": { "action": false }
+      },
+      "say-call-later": { "position": { "x": 1120, "y": 560 } },
+      "say-technical-problem": { "position": { "x": 640, "y": 560 } },
+      "disconnect": { "position": { "x": 1400, "y": 300 } }
+    }
+  },
+  "Actions": [
+    {
+      "Identifier": "set-logging",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Parameters": { "FlowLoggingBehavior": "Disabled" },
+      "Transitions": { "NextAction": "set-recording" }
+    },
+    {
+      "Identifier": "set-recording",
+      "Type": "UpdateContactRecordingBehavior",
+      "Parameters": { "RecordingBehavior": { "RecordedParticipants": [] } },
+      "Transitions": { "NextAction": "set-language" }
+    },
+    {
+      "Identifier": "set-language",
+      "Type": "UpdateContactData",
+      "Parameters": { "LanguageCode": "es-ES" },
+      "Transitions": {
+        "NextAction": "set-voice",
+        "Errors": [{ "NextAction": "set-voice", "ErrorType": "NoMatchingError" }]
+      }
+    },
+    {
+      "Identifier": "set-voice",
+      "Type": "UpdateContactTextToSpeechVoice",
+      "Parameters": { "TextToSpeechVoice": "Sergio", "TextToSpeechEngine": "Generative" },
+      "Transitions": {
+        "NextAction": "connect-assistant",
+        "Errors": [{ "NextAction": "connect-assistant", "ErrorType": "NoMatchingError" }]
+      }
+    },
+    {
+      "Identifier": "connect-assistant",
+      "Type": "CreateWisdomSession",
+      "Parameters": { "WisdomAssistantArn": "${ASSISTANT_ARN}" },
+      "Transitions": {
+        "NextAction": "lambda-start",
+        "Errors": [{ "NextAction": "say-technical-problem", "ErrorType": "NoMatchingError" }]
+      }
+    },
+    {
+      "Identifier": "lambda-start",
+      "Type": "InvokeLambdaFunction",
+      "Parameters": {
+        "LambdaFunctionARN": "${FLOW_HANDLER_ARN}",
+        "InvocationTimeLimitSeconds": "8",
+        "LambdaInvocationAttributes": { "action": "start" },
+        "ResponseValidation": { "ResponseType": "STRING_MAP" }
+      },
+      "Transitions": {
+        "NextAction": "check-start",
+        "Errors": [{ "NextAction": "say-technical-problem", "ErrorType": "NoMatchingError" }]
+      }
+    },
+    {
+      "Identifier": "check-start",
+      "Type": "Compare",
+      "Parameters": { "ComparisonValue": "$.External.result" },
+      "Transitions": {
+        "NextAction": "say-technical-problem",
+        "Conditions": [
+          { "NextAction": "santa-bot", "Condition": { "Operator": "Equals", "Operands": ["ok"] } }
+        ],
+        "Errors": [{ "NextAction": "say-technical-problem", "ErrorType": "NoMatchingCondition" }]
+      }
+    },
+    {
+      "Identifier": "santa-bot",
+      "Type": "ConnectParticipantWithLexBot",
+      "Parameters": {
+        "Text": "¡Jo, jo, jo! ¿Hola? ¿Hay alguien ahí?",
+        "LexV2Bot": { "AliasArn": "${LEX_BOT_ALIAS_ARN}" },
+        "LexSessionAttributes": { "x-amz-lex:audio:start-timeout-ms:*:*": "6000" }
+      },
+      "Transitions": {
+        "NextAction": "check-tool",
+        "Errors": [
+          { "NextAction": "check-tool", "ErrorType": "NoMatchingCondition" },
+          { "NextAction": "say-technical-problem", "ErrorType": "NoMatchingError" }
+        ]
+      }
+    },
+    {
+      "Identifier": "check-tool",
+      "Type": "Compare",
+      "Parameters": { "ComparisonValue": "$.Lex.SessionAttributes.Tool" },
+      "Transitions": {
+        "NextAction": "disconnect",
+        "Conditions": [
+          { "NextAction": "lambda-deliver", "Condition": { "Operator": "Equals", "Operands": ["EntregarCarta"] } },
+          { "NextAction": "lambda-no-response", "Condition": { "Operator": "Equals", "Operands": ["Complete"] } }
+        ],
+        "Errors": [{ "NextAction": "lambda-no-response", "ErrorType": "NoMatchingCondition" }]
+      }
+    },
+    {
+      "Identifier": "lambda-deliver",
+      "Type": "InvokeLambdaFunction",
+      "Parameters": {
+        "LambdaFunctionARN": "${FLOW_HANDLER_ARN}",
+        "InvocationTimeLimitSeconds": "8",
+        "LambdaInvocationAttributes": {
+          "action": "deliver",
+          "wishlist": "$.Lex.SessionAttributes.wishlist",
+          "behaviour": "$.Lex.SessionAttributes.behaviour",
+          "summary": "$.Lex.SessionAttributes.summary"
+        },
+        "ResponseValidation": { "ResponseType": "STRING_MAP" }
+      },
+      "Transitions": {
+        "NextAction": "disconnect",
+        "Errors": [{ "NextAction": "disconnect", "ErrorType": "NoMatchingError" }]
+      }
+    },
+    {
+      "Identifier": "lambda-no-response",
+      "Type": "InvokeLambdaFunction",
+      "Parameters": {
+        "LambdaFunctionARN": "${FLOW_HANDLER_ARN}",
+        "InvocationTimeLimitSeconds": "8",
+        "LambdaInvocationAttributes": { "action": "noResponse" },
+        "ResponseValidation": { "ResponseType": "STRING_MAP" }
+      },
+      "Transitions": {
+        "NextAction": "say-call-later",
+        "Errors": [{ "NextAction": "say-call-later", "ErrorType": "NoMatchingError" }]
+      }
+    },
+    {
+      "Identifier": "say-call-later",
+      "Type": "MessageParticipant",
+      "Parameters": { "Text": "¡Jo, jo, jo! Soy Santa. Volveré a llamar un poco más tarde." },
+      "Transitions": {
+        "NextAction": "disconnect",
+        "Errors": [{ "NextAction": "disconnect", "ErrorType": "NoMatchingError" }]
+      }
+    },
+    {
+      "Identifier": "say-technical-problem",
+      "Type": "MessageParticipant",
+      "Parameters": { "Text": "¡Jo, jo, jo! Los elfos tienen un lío con los cables. ¡Hasta pronto!" },
+      "Transitions": {
+        "NextAction": "disconnect",
+        "Errors": [{ "NextAction": "disconnect", "ErrorType": "NoMatchingError" }]
+      }
+    },
+    {
+      "Identifier": "disconnect",
+      "Type": "DisconnectParticipant",
+      "Parameters": {},
+      "Transitions": {}
+    }
+  ]
+}

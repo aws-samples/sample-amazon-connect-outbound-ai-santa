@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+# Copies ELEVENLABS_API_KEY from .env.local into the Secrets Manager secret that Amazon Connect
+# reads for the ElevenLabs voice. The key never appears on a command line or in the output.
+# Usage: AWS_PROFILE=<profile> npm run elevenlabs:secret
+set -euo pipefail
+
+SECRET_ID="santa-call-center/elevenlabs-api-key"
+REGION="${AWS_REGION:-eu-central-1}"
+
+set -a
+# shellcheck disable=SC1091
+. ./.env.local
+set +a
+if [ -z "${ELEVENLABS_API_KEY:-}" ]; then
+  echo "ELEVENLABS_API_KEY is not set in .env.local" >&2
+  exit 1
+fi
+
+umask 077
+tmp="$(mktemp)"
+trap 'rm -f "$tmp"' EXIT
+# The JSON form lets you add "apiTokenRegion" later (us, eu, in) if your ElevenLabs plan has data residency.
+ELEVENLABS_API_KEY="$ELEVENLABS_API_KEY" node -e \
+  'process.stdout.write(JSON.stringify({ apiToken: process.env.ELEVENLABS_API_KEY }))' > "$tmp"
+
+aws secretsmanager put-secret-value --region "$REGION" --secret-id "$SECRET_ID" \
+  --secret-string "file://$tmp" --query 'VersionId' --output text > /dev/null
+echo "Secret $SECRET_ID updated."

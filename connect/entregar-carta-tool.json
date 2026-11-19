@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "properties": {
+    "wishlist": {
+      "type": "string",
+      "description": "JSON array of the gifts the child asked for, in the child's own words, for example [\"una bici roja\", \"un libro de dinosaurios\"]. Use [] if the child asked for nothing.",
+      "maxLength": 1200
+    },
+    "behaviour": {
+      "type": "string",
+      "description": "One short sentence, in Spanish, about what the child said about their behaviour this year. Always positive or encouraging.",
+      "maxLength": 200
+    },
+    "summary": {
+      "type": "string",
+      "description": "Two or three sentences, in Spanish, summarising the call for the parents. No surnames, addresses or school names. Mention it if the child said they were sad, in danger or being hurt.",
+      "maxLength": 500
+    }
+  },
+  "required": ["wishlist", "behaviour", "summary"]
+}
