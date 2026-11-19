@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { client, unwrap, type SantaCall } from '../api.ts';
 import { phoneVerificationRequired } from '../config.ts';
 import { friendlyError } from '../errors.ts';
+import { t } from '../i18n.ts';
 import { CallForm } from './CallForm.tsx';
 import { CallList } from './CallList.tsx';
 import { PhoneVerification } from './PhoneVerification.tsx';
@@ -68,7 +69,7 @@ export function SantaHome({ email, onSignOut }: Props) {
           <Reindeer className="splash-reindeer" />
           <span className="splash-shadow" />
         </div>
-        <p className="splash-text">Los elfos están preparando todo…</p>
+        <p className="splash-text">{t.loadingHome}</p>
         <span className="splash-dots" aria-hidden="true">
           <span />
           <span />
@@ -86,16 +87,16 @@ export function SantaHome({ email, onSignOut }: Props) {
         <div className="home-brand">
           <Santa className="home-santa" />
           <div className="home-title">
-            <h1 className="logo">Llamada de Santa</h1>
+            <h1 className="logo">{t.appTitle}</h1>
           </div>
         </div>
         {isAdmin && (
           <button type="button" className="btn ghost small signout" aria-pressed={showWorkshop} onClick={() => setShowWorkshop((v) => !v)}>
-            {showWorkshop ? 'Volver' : 'Taller'}
+            {showWorkshop ? t.back : t.workshop}
           </button>
         )}
         <button type="button" className="btn ghost small signout" onClick={onSignOut}>
-          Salir
+          {t.signOut}
         </button>
       </header>
 
@@ -104,7 +105,7 @@ export function SantaHome({ email, onSignOut }: Props) {
           <Reindeer className="loading-reindeer still" />
           <p>{loadError}</p>
           <button type="button" className="btn" onClick={retry}>
-            Volver a intentarlo
+            {t.retry}
           </button>
         </div>
       ) : showWorkshop ? (

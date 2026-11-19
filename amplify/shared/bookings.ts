@@ -27,7 +27,7 @@ export interface Booking {
   notes: string;
   parentEmail: string;
   phoneNumber: string;
-  callDate: string; // Europe/Madrid wall clock
+  callDate: string; // wall clock in CALL_TIMEZONE
   callTime: string;
   callAtUtc: string;
   status: BookingStatus;

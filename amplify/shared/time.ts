@@ -1,6 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
-export const CALL_TIMEZONE = 'Europe/Madrid';
+import { callTimezone, msg, zoneCity } from './i18n.js';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -28,7 +28,7 @@ function zoneOffsetMs(utcMs: number, timeZone: string): number {
 }
 
 /** Convert a wall-clock date + time in `timeZone` to a UTC Date. */
-export function wallTimeToUtc(date: string, time: string, timeZone = CALL_TIMEZONE): Date {
+export function wallTimeToUtc(date: string, time: string, timeZone = callTimezone()): Date {
   const [y, mo, d] = date.split('-').map(Number);
   const [h, mi] = time.split(':').map(Number);
   const naive = Date.UTC(y, mo - 1, d, h, mi);
@@ -38,22 +38,22 @@ export function wallTimeToUtc(date: string, time: string, timeZone = CALL_TIMEZO
   return new Date(utc);
 }
 
-/** Santa calls until 24 December (Madrid). */
+/** Santa calls until 24 December (in CALL_TIMEZONE). */
 const LAST_CALL_DAY = '12-24';
 
-/** `YYYY-MM-DD` in Madrid for an instant. */
-export function madridDate(now: Date): string {
-  return new Date(now.getTime() + zoneOffsetMs(now.getTime(), CALL_TIMEZONE)).toISOString().slice(0, 10);
+/** `YYYY-MM-DD` in the call time zone (CALL_TIMEZONE) for an instant. */
+export function localDate(now: Date, timeZone = callTimezone()): string {
+  return new Date(now.getTime() + zoneOffsetMs(now.getTime(), timeZone)).toISOString().slice(0, 10);
 }
 
-/** `HH:mm` in Madrid for an instant. */
-export function madridTime(at: Date): string {
-  return new Date(at.getTime() + zoneOffsetMs(at.getTime(), CALL_TIMEZONE)).toISOString().slice(11, 16);
+/** `HH:mm` in the call time zone for an instant. */
+export function localTime(at: Date, timeZone = callTimezone()): string {
+  return new Date(at.getTime() + zoneOffsetMs(at.getTime(), timeZone)).toISOString().slice(11, 16);
 }
 
 /** 24 December of this year, or of next year once this year's has passed. */
 export function lastCallDate(now = new Date()): string {
-  const today = madridDate(now);
+  const today = localDate(now);
   const year = Number(today.slice(0, 4));
   const thisYear = `${year}-${LAST_CALL_DAY}`;
   return today <= thisYear ? thisYear : `${year + 1}-${LAST_CALL_DAY}`;
@@ -69,22 +69,22 @@ export type CallTimeResult = { ok: true; utc: Date } | { ok: false; error: strin
 
 export function validateCallTime(date: string, time: string, rules: CallTimeRules, now = new Date()): CallTimeResult {
   if (!DATE_RE.test(date) || !TIME_RE.test(time)) {
-    return { ok: false, error: 'Fecha u hora con formato no válido.' };
+    return { ok: false, error: msg().badDateTime };
   }
   const minutes = toMinutes(time);
   if (minutes < toMinutes(rules.windowStart) || minutes > toMinutes(rules.windowEnd)) {
-    return { ok: false, error: `Santa solo llama entre las ${rules.windowStart} y las ${rules.windowEnd} (hora de Madrid).` };
+    return { ok: false, error: msg().outsideWindow(rules.windowStart, rules.windowEnd, zoneCity(callTimezone())) };
   }
   const utc = wallTimeToUtc(date, time);
   if (Number.isNaN(utc.getTime())) {
-    return { ok: false, error: 'Fecha no válida.' };
+    return { ok: false, error: msg().badDate };
   }
   const leadMs = utc.getTime() - now.getTime();
   if (leadMs < rules.minLeadMinutes * 60_000) {
-    return { ok: false, error: `Elige una hora al menos ${rules.minLeadMinutes} minutos en el futuro.` };
+    return { ok: false, error: msg().minLead(rules.minLeadMinutes) };
   }
   if (date > lastCallDate(now)) {
-    return { ok: false, error: 'Santa solo llama hasta el 24 de diciembre.' };
+    return { ok: false, error: msg().lastDay };
   }
   return { ok: true, utc };
 }

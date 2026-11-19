@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MIT-0
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { addDays, formatCallDate } from '../format.ts';
+import { addDays, formatCallDate, formatMonth, monthCells, weekdayInitials } from '../format.ts';
+import { t } from '../i18n.ts';
 import { CalendarIcon } from './illustrations/Icons.tsx';
 
 interface Props {
@@ -15,20 +16,11 @@ interface Props {
   labelledBy: string;
 }
 
-const WEEKDAYS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'];
+const WEEKDAYS = weekdayInitials();
 const PANEL_WIDTH = 300;
 
-const monthName = new Intl.DateTimeFormat('es-ES', { month: 'long', year: 'numeric', timeZone: 'UTC' });
-const ymd = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
 const monthOf = (date: string) => ({ y: Number(date.slice(0, 4)), m: Number(date.slice(5, 7)) - 1 });
 const capitalise = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
-/** The days of a month in Monday-first weeks, with `null` for the blanks before the 1st. */
-function monthCells(y: number, m: number): (string | null)[] {
-  const lead = (new Date(Date.UTC(y, m, 1)).getUTCDay() + 6) % 7;
-  const count = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
-  return [...Array<null>(lead).fill(null), ...Array.from({ length: count }, (_, i) => ymd(y, m, i + 1))];
-}
 
 /**
  * Button that opens a month calendar. The panel is rendered in a portal with fixed positioning so the
@@ -87,8 +79,8 @@ export function DatePicker({ value, min, max, onChange, labelledBy }: Props) {
   useEffect(() => {
     if (!open) return;
     const onDown = (e: PointerEvent) => {
-      const t = e.target as Node;
-      if (!panelRef.current?.contains(t) && !triggerRef.current?.contains(t)) close(false);
+      const target = e.target as Node;
+      if (!panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) close(false);
     };
     document.addEventListener('pointerdown', onDown);
     return () => document.removeEventListener('pointerdown', onDown);
@@ -157,7 +149,7 @@ export function DatePicker({ value, min, max, onChange, labelledBy }: Props) {
             className="calendar"
             role="dialog"
             aria-modal="false"
-            aria-label="Elige el día de la llamada"
+            aria-label={t.pickDayDialog}
             style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, width: PANEL_WIDTH }}
             onKeyDown={onKeyDown}
           >
@@ -165,19 +157,19 @@ export function DatePicker({ value, min, max, onChange, labelledBy }: Props) {
               <button
                 type="button"
                 className="calendar-nav"
-                aria-label="Mes anterior"
+                aria-label={t.prevMonth}
                 disabled={!canPrev}
                 onClick={() => shiftMonth(-1)}
               >
                 ‹
               </button>
               <span className="calendar-month" aria-live="polite">
-                {capitalise(monthName.format(Date.UTC(view.y, view.m, 1)))}
+                {capitalise(formatMonth(view.y, view.m))}
               </span>
               <button
                 type="button"
                 className="calendar-nav"
-                aria-label="Mes siguiente"
+                aria-label={t.nextMonth}
                 disabled={!canNext}
                 onClick={() => shiftMonth(1)}
               >
@@ -185,8 +177,8 @@ export function DatePicker({ value, min, max, onChange, labelledBy }: Props) {
               </button>
             </div>
             <div className="calendar-grid">
-              {WEEKDAYS.map((d) => (
-                <span key={d} className="calendar-weekday" aria-hidden="true">
+              {WEEKDAYS.map((d, i) => (
+                <span key={i} className="calendar-weekday" aria-hidden="true">
                   {d}
                 </span>
               ))}

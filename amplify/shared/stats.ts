@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 import { BatchGetCommand, ScanCommand, UpdateCommand, type ScanCommandOutput } from '@aws-sdk/lib-dynamodb';
+import { callTimezone } from './i18n.js';
 import { doc } from './bookings.js';
 
 /**
@@ -36,9 +37,9 @@ export function talkStats(answeredAt: string | undefined, now = new Date()): Par
   return seconds > 0 && seconds < 3600 ? { talkSeconds: seconds, timedCalls: 1 } : {};
 }
 
-/** Calendar day in Madrid, YYYY-MM-DD. */
-export function madridDay(d: Date): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(d);
+/** Calendar day in the call time zone (CALL_TIMEZONE), YYYY-MM-DD. */
+export function localDay(d: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: callTimezone() }).format(d);
 }
 
 export const dayKey = (day: string) => `DAY#${day}`;
@@ -60,7 +61,7 @@ export async function bumpStats(counts: Partial<StatCounts>, now = new Date()): 
   });
   try {
     await Promise.all(
-      [TOTAL_KEY, dayKey(madridDay(now))].map((statKey) =>
+      [TOTAL_KEY, dayKey(localDay(now))].map((statKey) =>
         doc.send(
           new UpdateCommand({
             TableName: name,
@@ -122,7 +123,7 @@ async function countBookings(): Promise<{ pending: number; live: number }> {
 
 export async function readWorkshopStats(dayCount = 7, now = new Date()): Promise<WorkshopStats> {
   const name = table();
-  const days = Array.from({ length: dayCount }, (_, i) => madridDay(new Date(now.getTime() - (dayCount - 1 - i) * 86_400_000)));
+  const days = Array.from({ length: dayCount }, (_, i) => localDay(new Date(now.getTime() - (dayCount - 1 - i) * 86_400_000)));
   const items = new Map<string, Record<string, unknown>>();
   if (name) {
     const res = await doc.send(

@@ -5,7 +5,7 @@ import { mockClient } from 'aws-sdk-client-mock';
 import { describe, expect, it } from 'vitest';
 import { lastCallDate, toAtExpression, validateCallTime, wallTimeToUtc } from './time.js';
 import { isEmailAllowed, isPhoneAllowed, sanitizeFreeText, validateChildName, validateNotes } from './validation.js';
-import { escapeHtml, giftLinksFromEnv, giftSearchUrl, LOGO_CID, sendEmail, ses, wishlistEmail } from './email.js';
+import { cognitoCodeEmail, cognitoInviteEmail, escapeHtml, giftLinksFromEnv, giftSearchUrl, LOGO_CID, sendEmail, ses, wishlistEmail } from './email.js';
 
 const rules = { windowStart: '10:00', windowEnd: '20:30', minLeadMinutes: 5 };
 
@@ -147,5 +147,28 @@ describe('email', () => {
     expect(att).toMatchObject({ ContentDisposition: 'INLINE', ContentId: LOGO_CID, ContentType: 'image/png' });
     expect(Buffer.from(att!.RawContent!).subarray(1, 4).toString()).toBe('PNG');
     mock.restore();
+  });
+});
+
+describe('Cognito emails', () => {
+  it('keeps the placeholders Cognito requires in the invitation, within its size limit', () => {
+    const invite = cognitoInviteEmail('https://santa.example.com');
+    expect(invite.html).toContain('{username}');
+    expect(invite.html).toContain('{####}');
+    expect(invite.html).toContain('href="https://santa.example.com"');
+    // Cognito accepts up to 20,000 characters, and the inline logo image can't be attached.
+    expect(invite.html.length).toBeLessThan(20_000);
+    expect(invite.html).not.toContain('cid:');
+    expect(invite.subject.length).toBeLessThanOrEqual(140);
+  });
+
+  it('leaves the button out when there is no app URL', () => {
+    expect(cognitoInviteEmail().html).not.toContain('<a href');
+  });
+
+  it('puts the verification code in the message', () => {
+    const html = cognitoCodeEmail('{####}');
+    expect(html).toContain('{####}');
+    expect(html.length).toBeLessThan(20_000);
   });
 });

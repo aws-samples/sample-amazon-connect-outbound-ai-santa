@@ -1,2 +1,1 @@
-{"name": "1. Niña normal", "child": "Lucía", "notes": "Tiene 6 años y un perro que se llama Toby. Este año ha empezado natación.",
- "turns": ["hola", "sí soy yo, ¿eres santa de verdad?", "me he portado bien, ayudo a pasear a Toby", "quiero una bici roja con cesta y un puzle de dinosaurios", "y un libro de piratas", "no, ya está", "adiós santa"]}
+{"name": "1. Regular child", "child": "Emma", "notes": "She is 6 and has a dog named Toby. She started swimming lessons this year.", "turns": ["hello", "yes it's me, are you the real santa?", "i've been good, i help walk Toby", "i want a red bike with a basket and a dinosaur puzzle", "and a pirate book", "no, that's it", "bye santa"]}

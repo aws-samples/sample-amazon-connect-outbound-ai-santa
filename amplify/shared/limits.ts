@@ -39,7 +39,7 @@ function limit(name: string, fallback: number): number {
 
 const DAY_SECONDS = 86_400;
 
-/** Global cap on calls per calendar day (the call's date in Madrid), across all parents. */
+/** Global cap on calls per calendar day (the call's date in CALL_TIMEZONE), across all parents. */
 export const dailyCallKey = (callDate: string) => `CAP#CALLS#${callDate}`;
 
 export async function reserveDailyCall(callDate: string): Promise<boolean> {

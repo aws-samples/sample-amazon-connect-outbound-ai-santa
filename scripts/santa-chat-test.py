@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT-0
 """Text test of the Santa AI agent: starts a Connect chat on the Santa flow with a synthetic booking and
 plays the child's turns from a scenario file. The letter goes to TEST_PARENT_EMAIL (verified in SES sandbox).
+English scenarios are in scripts/chat-scenarios/, Spanish ones in scripts/chat-scenarios/es/. Use the folder that
+matches the deployed prompt (SANTA_LANGUAGE).
 
 Usage: set -a; . ./.env; set +a; AWS_PROFILE=<profile> TEST_PARENT_EMAIL=you@example.com \
          BOOKINGS_TABLE=<table> python3 scripts/santa-chat-test.py scripts/chat-scenarios/01-normal.json
@@ -18,14 +20,17 @@ FLOW = os.environ["CONNECT_CONTACT_FLOW_ID"]
 TABLE = os.environ["BOOKINGS_TABLE"]  # bookingsTable in amplify_outputs.json
 PARENT = os.environ["TEST_PARENT_EMAIL"]
 
-scenario = json.load(open(sys.argv[1]))
+scenario = json.load(open(sys.argv[1], encoding="utf-8"))
+# Synthetic phone in the scenario's country. It is never dialled: the test is a chat.
+SPANISH = os.path.basename(os.path.dirname(os.path.abspath(sys.argv[1]))) == "es"
+TEST_PHONE = "+34600000000" if SPANISH else "+12125550100"
 connect, part, ddb = S.client("connect"), S.client("connectparticipant"), S.client("dynamodb")
 
 booking_id = f"test-chat-{uuid.uuid4().hex[:8]}"
 now = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
 item = {
     "bookingId": {"S": booking_id}, "ownerSub": {"S": "test"}, "childName": {"S": scenario["child"]},
-    "notes": {"S": scenario["notes"]}, "parentEmail": {"S": PARENT}, "phoneNumber": {"S": "+34600000000"},
+    "notes": {"S": scenario["notes"]}, "parentEmail": {"S": PARENT}, "phoneNumber": {"S": TEST_PHONE},
     "callDate": {"S": "2026-11-16"}, "callTime": {"S": "18:00"}, "callAtUtc": {"S": now}, "status": {"S": "CALLING"},
     "attempts": {"N": "3"}, "createdAt": {"S": now}, "expiresAt": {"N": str(int(time.time()) + 3600)},
 }
@@ -68,7 +73,10 @@ def bot_lines(wait=25):
     return out, False
 
 print(f"== {scenario['name']} (contact {cid})")
-BLOCKED = ("Con tanto viento en el Polo Norte", "Se me ha enredado la barba")
+# Start of the AI guardrail's blocked messages (connect/agent-guardrail.md), in both languages.
+BLOCKED_EN = ("The wind at the North Pole is so loud", "My beard got all tangled up")
+BLOCKED_ES = ("Con tanto viento en el Polo Norte", "Se me ha enredado la barba")
+BLOCKED = BLOCKED_EN + BLOCKED_ES
 def show(lines):
     for l in lines:
         tag = " [GUARDRAIL]" if any(b in l for b in BLOCKED) else ""
@@ -78,7 +86,7 @@ lines, ended = bot_lines(30)
 show(lines)
 for msg in scenario["turns"]:
     if ended: break
-    print("NIÑO :", msg)
+    print("CHILD:", msg)
     try:
         part.send_message(ConnectionToken=tok, ContentType="text/plain", Content=msg)
     except part.exceptions.AccessDeniedException:

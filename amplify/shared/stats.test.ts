@@ -5,7 +5,7 @@ import type { AppSyncIdentityCognito } from 'aws-lambda';
 import { mockClient } from 'aws-sdk-client-mock';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { workshopStats } from '../functions/bookings-api/handler.js';
-import { bumpStats, madridDay, readWorkshopStats, talkStats } from './stats.js';
+import { bumpStats, localDay, readWorkshopStats, talkStats } from './stats.js';
 
 const ddb = mockClient(DynamoDBDocumentClient);
 
@@ -71,6 +71,6 @@ it('talkStats measures the conversation and ignores bad values', () => {
   expect(talkStats('2026-12-18T10:00:00Z', now)).toEqual({});
 });
 
-it('madridDay uses the Madrid calendar', () => {
-  expect(madridDay(new Date('2026-06-30T22:30:00Z'))).toBe('2026-07-01');
+it('localDay uses the Madrid calendar', () => {
+  expect(localDay(new Date('2026-06-30T22:30:00Z'))).toBe('2026-07-01');
 });

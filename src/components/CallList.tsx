@@ -4,18 +4,19 @@ import { useEffect, useState, type ComponentType } from 'react';
 import { client, unwrap, type SantaCall } from '../api.ts';
 import { friendlyError } from '../errors.ts';
 import { countdownLabel, formatCallWhen } from '../format.ts';
+import { t } from '../i18n.ts';
 import { BellIcon, LetterIcon, PhoneIcon, StarIcon } from './illustrations/Icons.tsx';
 import { Reindeer } from './illustrations/Reindeer.tsx';
 
 type Icon = ComponentType<{ className?: string }>;
 
 const STATUS: Record<string, { label: string; icon: Icon }> = {
-  CALLING: { label: 'Santa está marcando…', icon: PhoneIcon },
-  IN_CALL: { label: '¡Hablando con Santa!', icon: StarIcon },
-  NO_RESPONSE: { label: 'Santa lo volverá a intentar', icon: PhoneIcon },
-  DELIVERED: { label: 'La carta va volando a tu email', icon: LetterIcon },
+  CALLING: { label: t.status.CALLING, icon: PhoneIcon },
+  IN_CALL: { label: t.status.IN_CALL, icon: StarIcon },
+  NO_RESPONSE: { label: t.status.NO_RESPONSE, icon: PhoneIcon },
+  DELIVERED: { label: t.status.DELIVERED, icon: LetterIcon },
 };
-const UNKNOWN = { label: 'Los elfos están en ello', icon: StarIcon };
+const UNKNOWN = { label: t.status.UNKNOWN, icon: StarIcon };
 
 /** While a call is under way the status changes on its own, so refresh in the background. */
 const LIVE = new Set(['CALLING', 'IN_CALL', 'NO_RESPONSE', 'DELIVERED']);
@@ -58,9 +59,9 @@ export function CallList({ calls, onChanged }: Props) {
       <section className="card empty">
         <Reindeer className="empty-reindeer" />
         <p>
-          <strong>Todavía no has avisado a Santa.</strong>
+          <strong>{t.emptyTitle}</strong>
           <br />
-          <span className="muted">Rellena la carta y el reno le llevará el recado.</span>
+          <span className="muted">{t.emptySub}</span>
         </p>
       </section>
     );
@@ -77,8 +78,8 @@ export function CallList({ calls, onChanged }: Props) {
           onClick={() => setOpen((o) => !o)}
         >
           <BellIcon className="title-icon" />
-          <span className="calls-toggle-text">{open ? 'Ocultar llamadas agendadas' : 'Ver llamadas agendadas'}</span>
-          <span className="calls-count" aria-label={`${calls.length} ${calls.length === 1 ? 'llamada' : 'llamadas'}`}>
+          <span className="calls-toggle-text">{open ? t.hideCalls : t.showCalls}</span>
+          <span className="calls-count" aria-label={t.callsCount(calls.length)}>
             {calls.length}
           </span>
           <svg className="calls-chevron" viewBox="0 0 24 24" aria-hidden="true">
@@ -108,28 +109,28 @@ export function CallList({ calls, onChanged }: Props) {
                 )}
                 {c.status === 'SCHEDULED' &&
                   (confirming === c.bookingId ? (
-                    <span className="confirm" role="group" aria-label={`¿Cancelar la llamada de ${c.childName}?`}>
-                      <span className="confirm-q">¿Cancelar?</span>
+                    <span className="confirm" role="group" aria-label={t.cancelCallOfQuestion(c.childName)}>
+                      <span className="confirm-q">{t.cancelQuestion}</span>
                       <button
                         type="button"
                         className="btn small"
                         disabled={cancelling === c.bookingId}
                         onClick={() => cancel(c.bookingId)}
                       >
-                        {cancelling === c.bookingId ? 'Cancelando…' : 'Sí, cancelar'}
+                        {cancelling === c.bookingId ? t.cancelling : t.confirmCancel}
                       </button>
                       <button type="button" className="btn ghost small" onClick={() => setConfirming(null)}>
-                        No
+                        {t.no}
                       </button>
                     </span>
                   ) : (
                     <button
                       type="button"
                       className="btn ghost small"
-                      aria-label={`Cancelar la llamada de ${c.childName}`}
+                      aria-label={t.cancelCallOf(c.childName)}
                       onClick={() => setConfirming(c.bookingId)}
                     >
-                      Cancelar
+                      {t.cancel}
                     </button>
                   ))}
               </li>

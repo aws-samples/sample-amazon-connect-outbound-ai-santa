@@ -24,6 +24,10 @@ export default defineConfig({
       RETRY_DELAY_MINUTES: '15',
       AWS_REGION: 'eu-central-1',
       REQUIRE_PHONE_VERIFICATION: 'true',
+      // The backend tests were written for the Spanish deployment; English/US cases set these per test.
+      SANTA_LANGUAGE: 'es',
+      CALL_TIMEZONE: 'Europe/Madrid',
+      ALLOWED_PHONE_PREFIXES: '+34',
     },
   },
 });

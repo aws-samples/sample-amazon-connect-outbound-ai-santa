@@ -3,8 +3,11 @@
 import { useState, type FormEvent } from 'react';
 import { client, unwrap } from '../api.ts';
 import { friendlyError } from '../errors.ts';
-import { formatPhone } from '../format.ts';
+import { allowedPhonePrefixes } from '../config.ts';
+import { t } from '../i18n.ts';
+import { formatPhone, isValidPhone, splitPhone } from '../phone.ts';
 import { PhoneIcon } from './illustrations/Icons.tsx';
+import { PhoneInput } from './PhoneInput.tsx';
 
 interface Props {
   currentPhone: string | null;
@@ -13,17 +16,17 @@ interface Props {
   onSkip?: () => void;
 }
 
-const PREFIX = '+34';
-
 export function PhoneVerification({ currentPhone, onVerified, onSkip }: Props) {
-  const [digits, setDigits] = useState(currentPhone?.startsWith(PREFIX) ? currentPhone.slice(PREFIX.length) : '');
+  const [initial] = useState(() => splitPhone(currentPhone, allowedPhonePrefixes));
+  const [prefix, setPrefix] = useState(initial.prefix);
+  const [digits, setDigits] = useState(initial.digits);
   const [codeSent, setCodeSent] = useState(false);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  const phone = `${PREFIX}${digits.replace(/\D/g, '')}`;
+  const phone = `${prefix}${digits.replace(/\D/g, '')}`;
 
   /** The backend sends the code with AWS End User Messaging Notify and only saves the phone once the code is valid. */
   async function requestCode() {
@@ -34,8 +37,8 @@ export function PhoneVerification({ currentPhone, onVerified, onSkip }: Props) {
     e.preventDefault();
     setError('');
     setNotice('');
-    if (!/^\+34[67]\d{8}$/.test(phone)) {
-      setError('Escribe un móvil español de 9 cifras que empiece por 6 o 7.');
+    if (!isValidPhone(phone, allowedPhonePrefixes)) {
+      setError(t.phoneInvalid(prefix));
       return;
     }
     setBusy(true);
@@ -55,7 +58,7 @@ export function PhoneVerification({ currentPhone, onVerified, onSkip }: Props) {
     setBusy(true);
     try {
       await requestCode();
-      setNotice('Te hemos enviado un código nuevo.');
+      setNotice(t.newCodeSent);
     } catch (err) {
       setError(friendlyError(err));
     } finally {
@@ -84,48 +87,43 @@ export function PhoneVerification({ currentPhone, onVerified, onSkip }: Props) {
         <div className="verify-badge" aria-hidden="true">
           <PhoneIcon className="verify-icon" />
         </div>
-        <h2 className="verify-title">{codeSent ? 'Escribe el código' : 'Primero, verifica tu móvil'}</h2>
+        <h2 className="verify-title">{codeSent ? t.verifyTitleCode : t.verifyTitle}</h2>
         <p className="verify-text">
           {codeSent ? (
             <>
-              Te lo hemos enviado por SMS al <strong>{formatPhone(phone)}</strong>.
+              {t.verifySentTo[0]}
+              <strong>{formatPhone(phone)}</strong>
+              {t.verifySentTo[1]}
             </>
           ) : (
-            'Santa solo llama a números verificados. Te enviaremos un código por SMS.'
+            t.verifyIntro
           )}
         </p>
         {!codeSent ? (
           <form onSubmit={sendCode} className="form verify-form">
             <label className="verify-field">
-              <span className="verify-label">Móvil al que llamará Santa</span>
-              <div className="phone-input verify-phone">
-                <span>{PREFIX}</span>
-                <input
-                  name="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel-national"
-                  maxLength={9}
-                  value={digits}
-                  onChange={(e) => setDigits(e.target.value.replace(/\D/g, ''))}
-                  placeholder="600123456"
-                  required
-                />
-              </div>
+              <span className="verify-label">{t.phoneLabel}</span>
+              <PhoneInput
+                className="verify-phone"
+                prefix={prefix}
+                onPrefixChange={setPrefix}
+                digits={digits}
+                onDigitsChange={setDigits}
+              />
             </label>
             <button type="submit" className="btn block" disabled={busy}>
-              {busy ? 'Enviando…' : 'Enviar código SMS'}
+              {busy ? t.sending : t.sendCode}
             </button>
             {onSkip && (
               <button type="button" className="btn link" onClick={onSkip}>
-                Saltar este paso
+                {t.skipStep}
               </button>
             )}
           </form>
         ) : (
           <form onSubmit={confirm} className="form verify-form">
             <label className="verify-field">
-              <span className="verify-label">Código de 6 cifras</span>
+              <span className="verify-label">{t.codeLabel}</span>
               <input
                 className="code-input"
                 name="code"
@@ -140,15 +138,15 @@ export function PhoneVerification({ currentPhone, onVerified, onSkip }: Props) {
               />
             </label>
             <button type="submit" className="btn block" disabled={busy}>
-              {busy ? 'Comprobando…' : 'Verificar'}
+              {busy ? t.checking : t.verify}
             </button>
             <div className="verify-links">
               <button type="button" className="btn link" disabled={busy} onClick={resend}>
-                Reenviar código
+                {t.resendCode}
               </button>
               <span aria-hidden="true">·</span>
               <button type="button" className="btn link" onClick={() => setCodeSent(false)}>
-                Cambiar número
+                {t.changeNumber}
               </button>
             </div>
           </form>

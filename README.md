@@ -1,8 +1,8 @@
 # Santa phone 🎅📞
 
 Parents sign in, verify their mobile by SMS and schedule a call. At that time, an Amazon Connect AI
-agent with agentic voice calls as Santa, chats with the child in Spanish and collects their
-wishlist. The parents get the wishlist by email, and the booking is deleted.
+agent with agentic voice calls as Santa, chats with the child in English (or Spanish, see
+[Language and country](#language-and-country)) and collects their wishlist. The parents get the wishlist by email, and the booking is deleted.
 
 > **Sample code for controlled demos.** It handles children's names and parents' phone numbers.
 > Do not open it to the public without your own legal and privacy review. Sign-up is closed by
@@ -66,15 +66,40 @@ Decisions are recorded in [`docs/adr`](docs/adr). Third-party licences are in [`
 ## Prerequisites
 
 - Node.js 20 or later, and AWS credentials for an account that is not production.
-- An Amazon Connect instance in a Region with agentic voice. This sample uses `eu-central-1`.
+- An Amazon Connect instance in a Region with agentic voice for your language. The sample was tested in
+  `eu-central-1`; set `AWS_REGION` to deploy elsewhere.
 - SES is in sandbox mode in new accounts: verify every recipient email in SES, or request production access.
   Once SES has production access you can also send Cognito's invitations and password resets through it
   (`COGNITO_EMAIL_VIA_SES=true`); Cognito's default sender allows 50 emails a day per account.
 - Phone verification SMS go through [AWS End User Messaging Notify](https://docs.aws.amazon.com/sms-voice/latest/userguide/notify.html),
   which sends one-time codes from AWS-managed numbers without a sender ID or number registration.
-  Spain is on the Notify Basic tier. Create the two Notify resources once with `npm run notify:setup`
-  (AWS CLI 2.40 or later) and paste the two lines it prints into `.env`. See
+  Check that the countries in `NOTIFY_COUNTRIES` are supported on the Notify tier you use. Create the
+  two Notify resources once with `npm run notify:setup` (AWS CLI 2.40 or later; it reads
+  `NOTIFY_COUNTRIES` and `SANTA_LANGUAGE`) and paste the two lines it prints into `.env`. See
   [ADR 0006](docs/adr/0006-phone-verification-notify.md).
+
+## Language and country
+
+The sample is in US English and calls US numbers by default. These settings in `.env` change that:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `SANTA_LANGUAGE` | `en` | Language of the web app, the emails, the letter and the default notes text passed to Santa (`en` or `es`) |
+| `CALL_TIMEZONE` | `America/New_York` | IANA time zone of the call window and of every date and time parents see |
+| `ALLOWED_PHONE_PREFIXES` | `+1` | Comma-separated E.164 prefixes Santa may call. The backend enforces it |
+| `GIFT_LINKS_DOMAIN` | `amazon.com` | Store domain for the gift links in the letter, or `off` |
+| `NOTIFY_COUNTRIES` | `US` | Countries the verification SMS can go to (`npm run notify:setup`) |
+
+The Connect side is set up by hand, so pick the files of the same language: the English prompt and
+flow are `connect/santa-orchestration-prompt.yaml` and `connect/santa-flow.template.json`, with the
+bot and agent locale `en_US`. See [`connect/README.md`](connect/README.md#language).
+
+For Spanish calls to Spain, set `SANTA_LANGUAGE=es`, `ALLOWED_PHONE_PREFIXES=+34`,
+`CALL_TIMEZONE=Europe/Madrid`, `GIFT_LINKS_DOMAIN=amazon.es` and `NOTIFY_COUNTRIES=ES`, and in Connect
+use `connect/santa-orchestration-prompt.es.yaml`, `connect/santa-flow.template.es.json`, the `es_ES`
+bot and agent locale, a number that can call Spain, and the Spanish guardrail settings in
+[`connect/agent-guardrail.md`](connect/agent-guardrail.md). The Spanish chat test scenarios are in
+`scripts/chat-scenarios/es/`.
 
 ## Deploy
 
@@ -100,7 +125,7 @@ the phone yourself:
 
 ```bash
 aws cognito-idp admin-update-user-attributes --user-pool-id <pool-id> --username <username> \
-  --user-attributes Name=phone_number,Value=+34XXXXXXXXX Name=phone_number_verified,Value=true
+  --user-attributes Name=phone_number,Value=+1XXXXXXXXXX Name=phone_number_verified,Value=true
 ```
 
 Santa only calls the phone stored on the parent's Cognito user, never a number typed in the form.
@@ -121,7 +146,7 @@ Two Amazon Bedrock guardrails protect the call:
   side is left to the prompt, are in [`connect/agent-guardrail.md`](connect/agent-guardrail.md).
 
 Test the AI agent by text with [`scripts/santa-chat-test.py`](scripts/santa-chat-test.py) and the
-scenarios in [`scripts/chat-scenarios/`](scripts/chat-scenarios/) (see `connect/README.md`, step 6).
+scenarios in [`scripts/chat-scenarios/`](scripts/chat-scenarios/) (Spanish ones in `es/`; see `connect/README.md`, step 6).
 
 ## Security
 
@@ -130,9 +155,9 @@ in [`docs/threat-model.md`](docs/threat-model.md).
 
 | Risk | Control in the sample |
 |---|---|
-| Someone makes Santa call a number that isn't theirs | The phone must be verified with an SMS code; the backend only calls the phone verified on the parent's Cognito user. `+34` mobiles only (`ALLOWED_PHONE_PREFIXES`) |
+| Someone makes Santa call a number that isn't theirs | The phone must be verified with an SMS code; the backend only calls the phone verified on the parent's Cognito user. Only numbers with the allowed prefixes, `+1` by default (`ALLOWED_PHONE_PREFIXES`) |
 | Mass sign-ups | Admin-only user creation by default; optional email/domain allowlist (`SIGNUP_ALLOWLIST`). |
-| Cost abuse (calls, SMS, AI) | `MAX_CALLS_PER_DAY` (default 50) across all parents, at most 3 pending calls per parent, a call window, `MAX_SMS_CODES_PER_HOUR` (default 5) per user, Notify only to Spain |
+| Cost abuse (calls, SMS, AI) | `MAX_CALLS_PER_DAY` (default 50) across all parents, at most 3 pending calls per parent, a call window, `MAX_SMS_CODES_PER_HOUR` (default 5) per user, Notify only to `NOTIFY_COUNTRIES` |
 | Floods and known bad traffic | AWS WAF on the AppSync API: AWS managed rules (IP reputation, common rule set, known bad inputs) and a per-IP rate limit (`WAF_RATE_LIMIT` per 5 minutes) |
 | Prompt injection through the notes | 300 characters, brackets and control characters stripped, Bedrock guardrail before storage; Connect AI guardrail on every child turn |
 | Children's data | No recording, no transcript, no child data in Connect contact attributes; the booking is deleted after the email and expires after 2 days |
@@ -170,7 +195,7 @@ npm run nag       # cdk-nag security checks
 
 ## Cost
 
-Not estimated yet. A 3-minute call adds up outbound telephony to Spanish mobiles, Connect AI
+Not estimated yet. A 3-minute call adds up outbound telephony to the called country, Connect AI
 agent and voice minutes, Bedrock tokens, one Notify SMS per phone verification and two emails.
 AWS WAF adds a monthly charge per web ACL and rule plus requests; set `ENABLE_WAF=false` to skip it.
 

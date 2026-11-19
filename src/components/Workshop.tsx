@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type ComponentType } from 'react';
 import type { Schema } from '../../amplify/data/resource';
 import { client, unwrap } from '../api.ts';
 import { friendlyError } from '../errors.ts';
+import { locale, t } from '../i18n.ts';
 import { BellIcon, CalendarIcon, ClockIcon, GiftIcon, LetterIcon, PhoneIcon, RingingPhoneIcon, StarIcon } from './illustrations/Icons.tsx';
 import { Reindeer } from './illustrations/Reindeer.tsx';
 
@@ -13,26 +14,19 @@ type Icon = ComponentType<{ className?: string }>;
 
 const REFRESH_MS = 30_000;
 
-const TILES: { key: keyof Counts; label: string; icon: Icon }[] = [
-  { key: 'scheduled', label: 'Llamadas agendadas', icon: CalendarIcon },
-  { key: 'dialled', label: 'Llamadas hechas', icon: PhoneIcon },
-  { key: 'answered', label: 'Niños que hablaron con Santa', icon: StarIcon },
-  { key: 'lettersSent', label: 'Cartas repartidas', icon: LetterIcon },
-  { key: 'wishes', label: 'Deseos apuntados', icon: BellIcon },
-  { key: 'giftLinks', label: 'Enlaces de regalo enviados', icon: GiftIcon },
+const TILES: { key: keyof Counts & keyof typeof t.tiles; icon: Icon }[] = [
+  { key: 'scheduled', icon: CalendarIcon },
+  { key: 'dialled', icon: PhoneIcon },
+  { key: 'answered', icon: StarIcon },
+  { key: 'lettersSent', icon: LetterIcon },
+  { key: 'wishes', icon: BellIcon },
+  { key: 'giftLinks', icon: GiftIcon },
 ];
 
-const SMALL: { key: keyof Counts; label: string }[] = [
-  { key: 'missed', label: 'sin respuesta' },
-  { key: 'cutShort', label: 'colgadas antes de la carta' },
-  { key: 'cancelled', label: 'canceladas' },
-];
+const SMALL: (keyof Counts & keyof typeof t.small)[] = ['missed', 'cutShort', 'cancelled'];
 
-const nf = new Intl.NumberFormat('es-ES');
-const nf1 = new Intl.NumberFormat('es-ES', { maximumFractionDigits: 1 });
-
-/** Madrid to the North Pole, roughly: 49.6 degrees of latitude at 111 km each. */
-const KM_TO_NORTH_POLE = 5500;
+const nf = new Intl.NumberFormat(locale);
+const nf1 = new Intl.NumberFormat(locale, { maximumFractionDigits: 1 });
 
 function minutesSeconds(total: number): string {
   const m = Math.floor(total / 60);
@@ -41,19 +35,19 @@ function minutesSeconds(total: number): string {
 }
 
 /** Ratios from the counters. A dash when there is nothing to divide by yet. */
-export function derived(t: Counts) {
+export function derived(c: Counts) {
   return {
-    avgCall: t.timedCalls ? minutesSeconds(t.talkSeconds / t.timedCalls) : '–',
-    answerRate: t.dialled ? `${Math.round((t.answered / t.dialled) * 100)} %` : '–',
-    wishesPerLetter: t.lettersSent ? nf1.format(t.wishes / t.lettersSent) : '–',
-    sleighKm: nf.format(t.lettersSent * KM_TO_NORTH_POLE),
-    cookies: nf.format(t.wishes),
-    elves: nf.format(Math.ceil(t.wishes / 3)),
+    avgCall: c.timedCalls ? minutesSeconds(c.talkSeconds / c.timedCalls) : '–',
+    answerRate: c.dialled ? t.percent(Math.round((c.answered / c.dialled) * 100)) : '–',
+    wishesPerLetter: c.lettersSent ? nf1.format(c.wishes / c.lettersSent) : '–',
+    sleighDistance: nf.format(c.lettersSent * t.sleighPerLetter),
+    cookies: nf.format(c.wishes),
+    elves: nf.format(Math.ceil(c.wishes / 3)),
   };
 }
 const dayLabel = (day: string) =>
-  // Short weekday and day, e.g. "mié 18".
-  new Intl.DateTimeFormat('es-ES', { weekday: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
+  // Short weekday and day, e.g. "mié 18" or "Wed 18".
+  new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
 
 /** Admin-only view with aggregate numbers. It never shows names, notes or wishes. */
 export function Workshop() {
@@ -79,7 +73,7 @@ export function Workshop() {
     return (
       <section className="card center workshop-loading" role={error ? 'alert' : 'status'}>
         <Reindeer className={error ? 'loading-reindeer still' : 'loading-reindeer'} />
-        <p>{error || 'Contando cartas en el taller…'}</p>
+        <p>{error || t.workshopLoading}</p>
       </section>
     );
   }
@@ -93,69 +87,74 @@ export function Workshop() {
     <section className="card workshop">
       <h2 className="card-title">
         <GiftIcon className="title-icon" />
-        El taller de Santa
+        {t.workshopTitle}
       </h2>
 
       <div className="workshop-now">
         <span>
           <ClockIcon className="workshop-now-icon" />
-          <strong>{nf.format(stats.pending)}</strong> llamadas esperando su hora
+          <strong>{nf.format(stats.pending)}</strong>
+          {t.pendingSuffix}
         </span>
         <span>
           <RingingPhoneIcon className="workshop-now-icon" />
-          <strong>{nf.format(stats.live)}</strong> en curso ahora
+          <strong>{nf.format(stats.live)}</strong>
+          {t.liveSuffix}
         </span>
       </div>
 
       <ul className="workshop-tiles">
-        {TILES.map(({ key, label, icon: TileIcon }) => (
+        {TILES.map(({ key, icon: TileIcon }) => (
           <li key={key} className="workshop-tile">
             <TileIcon className="workshop-tile-icon" />
             <strong className="workshop-num">{nf.format(stats.totals[key])}</strong>
-            <span className="workshop-label">{label}</span>
+            <span className="workshop-label">{t.tiles[key]}</span>
           </li>
         ))}
       </ul>
 
       <dl className="workshop-ratios">
         <div>
-          <dt>Duración media de la llamada</dt>
+          <dt>{t.avgCall}</dt>
           <dd>{d.avgCall}</dd>
         </div>
         <div>
-          <dt>Tasa de respuesta</dt>
+          <dt>{t.answerRate}</dt>
           <dd>{d.answerRate}</dd>
         </div>
         <div>
-          <dt>Deseos por carta</dt>
+          <dt>{t.wishesPerLetter}</dt>
           <dd>{d.wishesPerLetter}</dd>
         </div>
       </dl>
 
       <p className="workshop-small muted">
-        {SMALL.map(({ key, label }) => `${nf.format(stats.totals[key])} ${label}`).join(' · ')}
+        {SMALL.map((key) => `${nf.format(stats.totals[key])} ${t.small[key]}`).join(' · ')}
       </p>
 
       <div className="workshop-fun">
         <h3 className="workshop-sub">
-          Datos del Polo Norte <span className="workshop-fun-tag">de cuento</span>
+          {t.funTitle} <span className="workshop-fun-tag">{t.funTag}</span>
         </h3>
         <ul>
           <li>
-            <strong>{d.sleighKm}</strong> km de trineo
+            <strong>{d.sleighDistance}</strong>
+            {t.sleighSuffix}
           </li>
           <li>
-            <strong>{d.cookies}</strong> galletas para los renos
+            <strong>{d.cookies}</strong>
+            {t.cookiesSuffix}
           </li>
           <li>
-            <strong>{d.elves}</strong> elfos trabajando
+            <strong>{d.elves}</strong>
+            {t.elvesSuffix}
           </li>
         </ul>
-        <p className="workshop-fun-note muted">Calculados a partir de las cartas y los deseos: una galleta por deseo, un elfo cada tres.</p>
+        <p className="workshop-fun-note muted">{t.funNote}</p>
       </div>
 
-      <h3 className="workshop-sub">Últimos 7 días</h3>
-      <ol className="workshop-days" aria-label="Llamadas hechas y cartas por día">
+      <h3 className="workshop-sub">{t.last7Days}</h3>
+      <ol className="workshop-days" aria-label={t.daysChartLabel}>
         {stats.days.map((d) => (
           <li key={d.day} className="workshop-day">
             <span className="workshop-bar-wrap" aria-hidden="true">
@@ -164,13 +163,13 @@ export function Workshop() {
             </span>
             <span className="workshop-day-label">{dayLabel(d.day)}</span>
             <span className="visually-hidden">
-              {d.dialled} llamadas, {d.lettersSent} cartas
+              {t.dayChartText(d.dialled, d.lettersSent)}
             </span>
           </li>
         ))}
       </ol>
       <p className="workshop-legend muted">
-        <span className="dot" /> llamadas hechas <span className="dot letters" /> cartas repartidas
+        <span className="dot" /> {t.legendCalls} <span className="dot letters" /> {t.legendLetters}
       </p>
       {error && (
         <p className="error" role="alert">

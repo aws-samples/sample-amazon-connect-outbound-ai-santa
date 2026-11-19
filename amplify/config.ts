@@ -17,6 +17,13 @@ function required(name: string): string {
 }
 
 export const config = {
+  /**
+   * Language of everything parents and children see and hear: `en` (default) or `es`. Pick the matching
+   * AI prompt and contact flow in connect/ (see the README, "Language and country").
+   */
+  language: (optional('SANTA_LANGUAGE', 'en') === 'es' ? 'es' : 'en') as 'en' | 'es',
+  /** IANA time zone for the call window, the call date and the daily limits, e.g. America/New_York or Europe/Madrid. */
+  callTimezone: optional('CALL_TIMEZONE', 'America/New_York'),
   /** Amazon Connect instance ID (not the ARN). Required: Lambdas are associated with it. */
   connectInstanceId: required('CONNECT_INSTANCE_ID'),
   /** Published Santa contact flow ID. Empty on the first deploy; the dialer refuses to call until set. */
@@ -42,7 +49,7 @@ export const config = {
   /** Comma-separated emails or @domains allowed to sign up. Empty means nobody can sign up. */
   signupAllowlist: optional('SIGNUP_ALLOWLIST'),
   /** Comma-separated E.164 prefixes Santa may call. */
-  allowedPhonePrefixes: optional('ALLOWED_PHONE_PREFIXES', '+34'),
+  allowedPhonePrefixes: optional('ALLOWED_PHONE_PREFIXES', '+1'),
   /**
    * Set to false to let parents skip the SMS code and type any allowed number.
    * Anyone who can sign in can then make Santa call any number, so keep SIGNUP_ALLOWLIST tight.
@@ -57,12 +64,12 @@ export const config = {
   notifyCodeConfigurationId: optional('NOTIFY_CODE_CONFIGURATION_ID'),
   /** Bedrock model or inference profile for writing the parent email. */
   bedrockModelId: optional('BEDROCK_MODEL_ID', 'eu.amazon.nova-lite-v1:0'),
-  /** Call window in Europe/Madrid wall-clock time, HH:MM. */
+  /** Call window in CALL_TIMEZONE wall-clock time, HH:MM. */
   callWindowStart: optional('CALL_WINDOW_START', '09:00'),
   callWindowEnd: optional('CALL_WINDOW_END', '22:00'),
   maxAttempts: optional('MAX_CALL_ATTEMPTS', '3'),
   retryDelayMinutes: optional('RETRY_DELAY_MINUTES', '15'),
-  /** Global cap on calls per calendar day (Madrid), across all parents. Keeps telephony and AI cost bounded. */
+  /** Global cap on calls per calendar day (in CALL_TIMEZONE), across all parents. Keeps telephony and AI cost bounded. */
   maxCallsPerDay: optional('MAX_CALLS_PER_DAY', '50'),
   /** Verification SMS a user may request per clock hour, against SMS pumping. */
   maxSmsCodesPerHour: optional('MAX_SMS_CODES_PER_HOUR', '5'),
@@ -80,10 +87,10 @@ export const config = {
    */
   elevenLabsTts: optional('ELEVENLABS_TTS', 'false') === 'true',
   /**
-   * Amazon store for the "Ver ideas en Amazon" link under each wish in the parents' email, e.g. amazon.es.
+   * Amazon store for the "See ideas on Amazon" link under each wish in the parents' email, e.g. amazon.com or amazon.es.
    * Set to "off" to send the email without links.
    */
-  giftLinksDomain: optional('GIFT_LINKS_DOMAIN', 'amazon.es'),
+  giftLinksDomain: optional('GIFT_LINKS_DOMAIN', 'amazon.com'),
   /**
    * Optional Amazon Associates tracking ID added to the gift links. The email then says the links are
    * affiliate links. Check your employer's and the Associates programme's rules before setting it.

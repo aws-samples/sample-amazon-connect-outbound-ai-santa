@@ -8,19 +8,17 @@ import {
 } from '@aws-sdk/client-endusermessaging';
 import type { AppSyncIdentityCognito } from 'aws-lambda';
 import { takeSmsCode } from '../../shared/limits.js';
-import { isPhoneAllowed } from '../../shared/validation.js';
+import { msg } from '../../shared/i18n.js';
+import { isMobileAllowed } from '../../shared/validation.js';
 import { UserError } from './errors.js';
 
 const cognito = new CognitoIdentityProviderClient({});
 const eum = new EndUserMessagingClient({});
 
-/** Spanish mobiles only: Santa calls a mobile and the code goes by SMS. */
-const MOBILE = /^\+34[67]\d{8}$/;
-
 function checkPhone(raw: string | undefined): string {
   const phone = (raw ?? '').replace(/[\s-]/g, '');
-  if (!MOBILE.test(phone) || !isPhoneAllowed(phone, process.env.ALLOWED_PHONE_PREFIXES ?? '+34')) {
-    throw new UserError('Escribe un móvil español de 9 cifras que empiece por 6 o 7.');
+  if (!isMobileAllowed(phone, process.env.ALLOWED_PHONE_PREFIXES ?? '+1')) {
+    throw new UserError(msg().phoneInvalid);
   }
   return phone;
 }
@@ -37,7 +35,7 @@ function referenceId(identity: AppSyncIdentityCognito): string {
 export async function sendPhoneCode(identity: AppSyncIdentityCognito, rawPhone: string | undefined): Promise<boolean> {
   const phone = checkPhone(rawPhone);
   if (!(await takeSmsCode(identity.sub))) {
-    throw new UserError('Has pedido demasiados códigos. Espera un rato e inténtalo de nuevo.');
+    throw new UserError(msg().tooManyCodes);
   }
   try {
     await eum.send(
@@ -52,7 +50,7 @@ export async function sendPhoneCode(identity: AppSyncIdentityCognito, rawPhone: 
   } catch (err) {
     const name = (err as Error).name;
     if (name === 'ThrottlingException' || name === 'ServiceQuotaExceededException') {
-      throw new UserError('Has pedido demasiados códigos. Espera unos minutos e inténtalo de nuevo.');
+      throw new UserError(msg().tooManyCodesWait);
     }
     throw err;
   }
@@ -67,13 +65,13 @@ export async function verifyPhoneCode(
 ): Promise<boolean> {
   const phone = checkPhone(rawPhone);
   const code = (rawCode ?? '').trim();
-  if (!/^\d{6}$/.test(code)) throw new UserError('El código tiene 6 cifras.');
+  if (!/^\d{6}$/.test(code)) throw new UserError(msg().codeSixDigits);
 
   const res = await eum.send(
     new ValidateNotifyCodeVerificationCommand({ destinationIdentity: phone, code, referenceId: referenceId(identity) }),
   );
   if (res.status !== 'VALID') {
-    throw new UserError('El código no es correcto o ha caducado. Revísalo o pide uno nuevo.');
+    throw new UserError(msg().codeWrong);
   }
 
   await cognito.send(

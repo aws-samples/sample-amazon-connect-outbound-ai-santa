@@ -10,12 +10,15 @@ import {
   defaultCallSlot,
   firstCallDay,
   formatCallWhen,
-  formatNationalNumber,
-  formatPhone,
+  formatTime,
   lastCallDay,
+  zoneCity,
 } from '../format.ts';
-import { santaCallerNumber } from '../config.ts';
+import { allowedPhonePrefixes, santaCallerNumber } from '../config.ts';
+import { t } from '../i18n.ts';
+import { formatNationalNumber, formatPhone, isValidPhone } from '../phone.ts';
 import { DatePicker } from './DatePicker.tsx';
+import { PhoneInput } from './PhoneInput.tsx';
 import { ClockIcon, LetterIcon, StarIcon } from './illustrations/Icons.tsx';
 import { Elf } from './illustrations/Elf.tsx';
 
@@ -27,8 +30,6 @@ interface Props {
   /** Admins get a button that calls one minute from now, for quick tests. */
   isAdmin?: boolean;
 }
-
-const PREFIX = '+34';
 
 const NOTES_MAX = 300;
 
@@ -51,11 +52,11 @@ function Celebration({ scheduled, onAnother }: { scheduled: Scheduled; onAnother
           ))}
         </div>
         <h2 className="celebration-title" ref={titleRef} tabIndex={-1}>
-          ¡Santa ya ha apuntado a {scheduled.childName} en su lista!
+          {t.celebrationTitle(scheduled.childName)}
         </h2>
-        <p className="celebration-when">Llamará el {scheduled.when}.</p>
+        <p className="celebration-when">{t.celebrationWhen(scheduled.when)}</p>
         <button type="button" className="btn ghost" onClick={onAnother}>
-          Agendar otra llamada
+          {t.scheduleAnother}
         </button>
       </div>
     </section>
@@ -73,20 +74,20 @@ function Chevron() {
 function Tips() {
   return (
     <details className="tips">
-      <summary>Cómo preparar a tu peque</summary>
+      <summary>{t.tipsTitle}</summary>
       <ul>
         {santaCallerNumber ? (
           <li>
-            Santa llamará desde el <strong>{formatNationalNumber(santaCallerNumber)}</strong>. Guárdalo en la agenda
-            como «Santa» para que salga su nombre cuando suene.
+            {t.tipCaller[0]}
+            <strong>{formatNationalNumber(santaCallerNumber)}</strong>
+            {t.tipCaller[1]}
           </li>
         ) : (
-          <li>Santa llamará desde un número que no tienes en la agenda. ¡Cógelo!</li>
+          <li>{t.tipUnknownCaller}</li>
         )}
-        <li>Pon el altavoz para escucharlo juntos.</li>
-        <li>Deja que hable tu peque: Santa le preguntará qué quiere pedir.</li>
-        <li>Si nadie contesta, Santa lo volverá a intentar un poco más tarde.</li>
-        <li>Al colgar, recibirás su carta de deseos por email.</li>
+        {t.tips.map((tip) => (
+          <li key={tip}>{tip}</li>
+        ))}
       </ul>
     </details>
   );
@@ -104,6 +105,7 @@ export function CallForm({ email, verifiedPhone, onScheduled, isAdmin = false }:
   const [notes, setNotes] = useState('');
   const [callDate, setCallDate] = useState(initial.date);
   const [callTime, setCallTime] = useState(initial.time);
+  const [prefix, setPrefix] = useState(allowedPhonePrefixes[0]);
   const [digits, setDigits] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -130,9 +132,9 @@ export function CallForm({ email, verifiedPhone, onScheduled, isAdmin = false }:
     const inOneMinute = (e.nativeEvent as SubmitEvent).submitter?.getAttribute('data-quick') === 'true';
     setError('');
     setPhoneError('');
-    const phoneNumber = verifiedPhone ? undefined : `${PREFIX}${digits}`;
-    if (phoneNumber && !/^\+34[67]\d{8}$/.test(phoneNumber)) {
-      setPhoneError('Escribe un móvil español de 9 cifras que empiece por 6 o 7.');
+    const phoneNumber = verifiedPhone ? undefined : `${prefix}${digits}`;
+    if (phoneNumber && !isValidPhone(phoneNumber, allowedPhonePrefixes)) {
+      setPhoneError(t.phoneInvalid(prefix));
       phoneRef.current?.focus();
       return;
     }
@@ -159,12 +161,12 @@ export function CallForm({ email, verifiedPhone, onScheduled, isAdmin = false }:
     <section className="card letter">
       <h2 className="card-title">
         <LetterIcon className="title-icon" />
-        Pide la llamada de Santa
+        {t.formTitle}
       </h2>
       <div className="card-scroll">
         <form onSubmit={submit} className="form">
           <label>
-            Nombre del peque
+            {t.childNameLabel}
             <input
               name="childName"
               value={childName}
@@ -173,16 +175,14 @@ export function CallForm({ email, verifiedPhone, onScheduled, isAdmin = false }:
               required
               autoComplete="off"
               spellCheck={false}
-              placeholder="Por ejemplo, Lucía…"
+              placeholder={t.childNamePlaceholder}
             />
           </label>
 
           <label>
             <span className="label-row">
-              Cosas que Santa sabe
-              <small className="muted char-count">
-                (opcional, {notes.length}/{NOTES_MAX})
-              </small>
+              {t.notesLabel}
+              <small className="muted char-count">{t.notesCount(notes.length, NOTES_MAX)}</small>
             </span>
             <textarea
               name="notes"
@@ -191,16 +191,16 @@ export function CallForm({ email, verifiedPhone, onScheduled, isAdmin = false }:
               rows={3}
               autoComplete="off"
               aria-describedby="notes-hint"
-              placeholder="Le encantan los dinosaurios y este año ha aprendido a montar en bici…"
+              placeholder={t.notesPlaceholder}
             />
             <small id="notes-hint" className="muted">
-              Santa lo usará en la conversación. No incluyas apellidos, dirección ni colegio.
+              {t.notesHint}
             </small>
           </label>
 
           <div className="row">
             <div className="field day-field">
-              <span id="call-date-label">Día</span>
+              <span id="call-date-label">{t.dayLabel}</span>
               <span className="picker">
                 <DatePicker
                   value={callDate}
@@ -212,7 +212,7 @@ export function CallForm({ email, verifiedPhone, onScheduled, isAdmin = false }:
               </span>
             </div>
             <label className="time-field">
-              Hora (Madrid)
+              {t.timeLabel(zoneCity())}
               <span className="picker">
                 <ClockIcon className="picker-icon" />
                 <select
@@ -222,9 +222,9 @@ export function CallForm({ email, verifiedPhone, onScheduled, isAdmin = false }:
                   aria-describedby="time-hint"
                   required
                 >
-                  {slots.map((t) => (
-                    <option key={t} value={t}>
-                      {t}
+                  {slots.map((slot) => (
+                    <option key={slot} value={slot}>
+                      {formatTime(slot)}
                     </option>
                   ))}
                 </select>
@@ -234,30 +234,22 @@ export function CallForm({ email, verifiedPhone, onScheduled, isAdmin = false }:
           </div>
           <small id="time-hint" className="muted hint-tight">
             {seasonOver
-              ? 'Santa ya ha hecho todas sus llamadas de este año. ¡Vuelve en diciembre!'
-              : `Santa llama hasta el 24 de diciembre, entre las ${CALL_WINDOW_START} y las ${CALL_WINDOW_END}.`}
+              ? t.seasonOver
+              : t.callWindowHint(formatTime(CALL_WINDOW_START), formatTime(CALL_WINDOW_END))}
           </small>
 
           {!verifiedPhone && (
             <label>
-              Móvil al que llamará Santa
-              <div className="phone-input">
-                <span>{PREFIX}</span>
-                <input
-                  ref={phoneRef}
-                  name="phone"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel-national"
-                  maxLength={9}
-                  value={digits}
-                  onChange={(e) => setDigits(e.target.value.replace(/\D/g, ''))}
-                  placeholder="600123456"
-                  aria-invalid={phoneError ? true : undefined}
-                  aria-describedby={phoneError ? 'phone-error' : undefined}
-                  required
-                />
-              </div>
+              {t.phoneLabel}
+              <PhoneInput
+                prefix={prefix}
+                onPrefixChange={setPrefix}
+                digits={digits}
+                onDigitsChange={setDigits}
+                inputRef={phoneRef}
+                invalid={!!phoneError}
+                describedBy={phoneError ? 'phone-error' : undefined}
+              />
               {phoneError && (
                 <span id="phone-error" className="field-error" role="alert">
                   {phoneError}
@@ -269,21 +261,25 @@ export function CallForm({ email, verifiedPhone, onScheduled, isAdmin = false }:
           <p className="send-info">
             {verifiedPhone && (
               <>
-                Santa llamará a <strong>{formatPhone(verifiedPhone)}</strong>
+                {t.santaWillCall[0]}
+                <strong>{formatPhone(verifiedPhone)}</strong>
+                {t.santaWillCall[1]}
                 <br />
               </>
             )}
-            La carta llegará a <strong className="break">{email}</strong>
+            {t.letterGoesTo[0]}
+            <strong className="break">{email}</strong>
+            {t.letterGoesTo[1]}
           </p>
 
           <Tips />
 
           <button type="submit" className="btn big" disabled={busy || seasonOver}>
-            {busy ? 'Avisando a los elfos…' : '¡Que llame Santa!'}
+            {busy ? t.notifyingElves : t.submit}
           </button>
           {isAdmin && (
             <button type="submit" className="btn ghost quick-test" data-quick="true" disabled={busy}>
-              Prueba: llamar en 1 minuto
+              {t.quickTest}
             </button>
           )}
           {error && (

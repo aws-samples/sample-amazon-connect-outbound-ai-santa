@@ -8,7 +8,8 @@ import { checkText } from '../../shared/guardrail.js';
 import { deleteSchedule, scheduleDial } from '../../shared/scheduler.js';
 import { bumpStats, readWorkshopStats, type WorkshopStats } from '../../shared/stats.js';
 import { releaseDailyCall, reserveDailyCall } from '../../shared/limits.js';
-import { madridDate, madridTime, validateCallTime } from '../../shared/time.js';
+import { msg } from '../../shared/i18n.js';
+import { localDate, localTime, validateCallTime } from '../../shared/time.js';
 import { isPhoneAllowed, validateChildName, validateNotes } from '../../shared/validation.js';
 import { UserError } from './errors.js';
 import { sendPhoneCode, verifyPhoneCode } from './phone.js';
@@ -45,15 +46,13 @@ export function phoneVerificationRequired(): boolean {
 export async function verifiedContact(username: string, requestedPhone?: string): Promise<{ email: string; phone: string }> {
   const res = await cognito.send(new AdminGetUserCommand({ UserPoolId: process.env.USER_POOL_ID, Username: username }));
   const attr = (n: string) => res.UserAttributes?.find((a) => a.Name === n)?.Value;
-  if (attr('email_verified') !== 'true' || !attr('email')) throw new UserError('Verifica tu email antes de agendar una llamada.');
+  if (attr('email_verified') !== 'true' || !attr('email')) throw new UserError(msg().verifyEmailFirst);
   const verifiedPhone = attr('phone_number_verified') === 'true' ? attr('phone_number') : undefined;
   const requested = requestedPhone?.replace(/[\s-]/g, '') || undefined;
   if (!phoneVerificationRequired() && requested) return { email: attr('email')!, phone: requested };
   if (!verifiedPhone) {
     throw new UserError(
-      phoneVerificationRequired()
-        ? 'Verifica tu teléfono con el código SMS antes de agendar una llamada.'
-        : 'Escribe el móvil al que tiene que llamar Santa.',
+      phoneVerificationRequired() ? msg().verifyPhoneFirst : msg().typePhone,
     );
   }
   return { email: attr('email')!, phone: verifiedPhone };
@@ -81,7 +80,7 @@ export async function scheduleCall(identity: AppSyncIdentityCognito, args: Sched
 
   const quick = args.inOneMinute === true;
   if (quick && !identity.groups?.includes(ADMIN_GROUP)) {
-    throw new UserError('Solo los elfos administradores pueden pedir una llamada de prueba.');
+    throw new UserError(msg().adminOnlyQuickTest);
   }
   // A quick test skips the call window on purpose; every other check (phone, limits, guardrail) still applies.
   const quickAt = new Date(Math.ceil((now.getTime() + QUICK_TEST_DELAY_MS) / 1000) * 1000);
@@ -98,29 +97,29 @@ export async function scheduleCall(identity: AppSyncIdentityCognito, args: Sched
         now,
       );
   if (!when.ok) throw new UserError(when.error);
-  const callDate = quick ? madridDate(when.utc) : args.callDate!;
-  const callTime = quick ? madridTime(when.utc) : args.callTime!;
+  const callDate = quick ? localDate(when.utc) : args.callDate!;
+  const callTime = quick ? localTime(when.utc) : args.callTime!;
 
   const { email, phone } = await verifiedContact(identity.username, args.phoneNumber);
-  if (!isPhoneAllowed(phone, process.env.ALLOWED_PHONE_PREFIXES ?? '+34')) {
-    throw new UserError('Santa solo puede llamar a números de los países permitidos.');
+  if (!isPhoneAllowed(phone, process.env.ALLOWED_PHONE_PREFIXES ?? '+1')) {
+    throw new UserError(msg().phoneNotAllowed);
   }
 
   const active = await listByOwner(identity.sub);
   if (active.length >= MAX_ACTIVE_BOOKINGS) {
-    throw new UserError(`Puedes tener ${MAX_ACTIVE_BOOKINGS} llamadas agendadas como máximo.`);
+    throw new UserError(msg().maxActive(MAX_ACTIVE_BOOKINGS));
   }
 
   // The notes go into Santa's prompt, so they pass the guardrail (prompt attacks, harmful content) first.
   const textForCheck = `Nombre: ${name.value}\nNotas: ${notes.value}`;
   const check = await checkText(textForCheck, 'INPUT');
   if (!check.allowed) {
-    throw new UserError('Santa no puede usar ese texto. Escribe algo sencillo sobre el niño o la niña, como sus aficiones.');
+    throw new UserError(msg().notesBlocked);
   }
 
   // Global cost cap, after every other check so a rejected request never takes a slot.
   if (!(await reserveDailyCall(args.callDate!))) {
-    throw new UserError('Santa ya tiene la agenda llena ese día. Prueba con otro día.');
+    throw new UserError(msg().dayFull);
   }
 
   const booking: Booking = {
@@ -157,8 +156,8 @@ export async function scheduleCall(identity: AppSyncIdentityCognito, args: Sched
 
 export async function cancelCall(identity: AppSyncIdentityCognito, bookingId: string): Promise<boolean> {
   const b = await getBooking(bookingId);
-  if (!b || b.ownerSub !== identity.sub) throw new UserError('No se ha encontrado la llamada.');
-  if (b.status !== 'SCHEDULED') throw new UserError('Santa ya está llamando; no se puede cancelar ahora.');
+  if (!b || b.ownerSub !== identity.sub) throw new UserError(msg().callNotFound);
+  if (b.status !== 'SCHEDULED') throw new UserError(msg().alreadyCalling);
   await deleteSchedule(b.bookingId, b.attempts + 1);
   await deleteBooking(b.bookingId);
   await releaseDailyCall(b.callDate);
@@ -170,7 +169,7 @@ export const ADMIN_GROUP = 'ADMINS';
 
 /** Aggregate numbers for the admin view. AppSync already restricts the query to the group; this checks again. */
 export async function workshopStats(identity: AppSyncIdentityCognito): Promise<WorkshopStats> {
-  if (!identity.groups?.includes(ADMIN_GROUP)) throw new UserError('Solo los elfos administradores pueden ver el taller.');
+  if (!identity.groups?.includes(ADMIN_GROUP)) throw new UserError(msg().adminOnlyWorkshop);
   return readWorkshopStats();
 }
 
@@ -214,6 +213,6 @@ export const handler = async (event: AmplifyFunctionEvent) => {
   } catch (err) {
     if (err instanceof UserError) throw err;
     console.error('bookings-api failed', { field: event.fieldName, error: (err as Error).name });
-    throw new Error('Los elfos han tenido un problema. Inténtalo de nuevo en unos minutos.');
+    throw new Error(msg().genericError);
   }
 };

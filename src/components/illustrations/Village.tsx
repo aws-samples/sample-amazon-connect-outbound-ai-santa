@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 import { useSyncExternalStore } from 'react';
+import { t as text } from '../../i18n.ts';
 
 /**
  * North Pole village skyline. Decorative.
@@ -194,13 +195,13 @@ function Signpost({ x, y }: { x: number; y: number }) {
       <path d="M-7 -9q7 -7 14 0q-7 -2 -14 0z" fill={SNOW} />
       <path d="M-8 12h112l12 12-12 12h-112z" fill="#FFF8EC" stroke="#8E231B" strokeWidth="3" />
       <path d="M-8 13h112l3 3c-30 -3 -80 3 -115 -1z" fill={SNOW} />
-      <text x="48" y="28" textAnchor="middle" className="sign-text">POLO NORTE</text>
+      <text x="48" y="28" textAnchor="middle" className="sign-text">{text.signNorthPole}</text>
       <path d="M8 44h-74l-12 11 12 11h74z" fill="#2F6B3A" />
       <path d="M8 45h-74l-3 3c25 -3 55 2 77 -1z" fill={SNOW} />
-      <text x="-32" y="59" textAnchor="middle" className="sign-text light">Taller</text>
+      <text x="-32" y="59" textAnchor="middle" className="sign-text light">{text.signWorkshop}</text>
       <path d="M-8 74h72l11 10-11 10h-72z" fill="#C8372D" />
       <path d="M-8 75h72l3 3c-25 -3 -55 2 -75 -1z" fill={SNOW} />
-      <text x="28" y="88" textAnchor="middle" className="sign-text light">Renos</text>
+      <text x="28" y="88" textAnchor="middle" className="sign-text light">{text.signReindeer}</text>
     </g>
   );
 }

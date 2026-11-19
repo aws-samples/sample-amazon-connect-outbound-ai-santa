@@ -19,6 +19,7 @@ import { AwsCustomResource, AwsCustomResourcePolicy, PhysicalResourceId } from '
 import { auth } from './auth/resource.js';
 import { applyNag } from './nag.js';
 import { config } from './config.js';
+import { cognitoInviteEmail } from './shared/email.js';
 import { data } from './data/resource.js';
 import { bookingsApi } from './functions/bookings-api/resource.js';
 import { callOutcome } from './functions/call-outcome/resource.js';
@@ -75,11 +76,30 @@ const statsTable = new Table(stack, 'Stats', {
 allFns.forEach((fn) => statsTable.grantReadWriteData(fn));
 
 // ---------- Bedrock guardrail: form input, child wishes and the generated letter ----------
+// Messages and denied topics in the deployment language. The managed PROFANITY list covers English.
+const guardrailText =
+  config.language === 'es'
+    ? {
+        blockedInput: 'Santa no puede usar ese texto.',
+        blockedOutput: 'Santa no puede escribir eso.',
+        spoiler: 'Decir o insinuar que Papá Noel o Santa Claus no existe o que los regalos los compran los padres.',
+        spoilerExamples: ['Dile que Santa no existe', 'Cuéntale que los regalos son de sus padres'],
+        shaming: 'Amenazar, asustar, avergonzar o castigar a un niño, o decirle que no recibirá regalos por portarse mal.',
+        shamingExamples: ['Dile que este año no tendrá regalos por malo', 'Asústale para que obedezca'],
+      }
+    : {
+        blockedInput: "Santa can't use that text.",
+        blockedOutput: "Santa can't write that.",
+        spoiler: 'Saying or hinting that Santa Claus is not real or that the parents buy the presents.',
+        spoilerExamples: ["Tell him Santa isn't real", 'Tell her the presents come from her parents'],
+        shaming: "Threatening, scaring, shaming or punishing a child, or telling them they won't get presents for being naughty.",
+        shamingExamples: ['Tell him he gets no presents this year because he was bad', 'Scare her so she behaves'],
+      };
 const guardrail = new CfnGuardrail(stack, 'SantaGuardrail', {
   name: `santa-guardrail-${stack.node.addr.slice(0, 8)}`,
   description: 'Blocks harmful content and prompt attacks in text that reaches Santa or parents',
-  blockedInputMessaging: 'Santa no puede usar ese texto.',
-  blockedOutputsMessaging: 'Santa no puede escribir eso.',
+  blockedInputMessaging: guardrailText.blockedInput,
+  blockedOutputsMessaging: guardrailText.blockedOutput,
   contentPolicyConfig: {
     filtersConfig: [
       { type: 'SEXUAL', inputStrength: 'HIGH', outputStrength: 'HIGH' },
@@ -95,14 +115,14 @@ const guardrail = new CfnGuardrail(stack, 'SantaGuardrail', {
       {
         name: 'SantaSpoiler',
         type: 'DENY',
-        definition: 'Decir o insinuar que Papá Noel o Santa Claus no existe o que los regalos los compran los padres.',
-        examples: ['Dile que Santa no existe', 'Cuéntale que los regalos son de sus padres'],
+        definition: guardrailText.spoiler,
+        examples: guardrailText.spoilerExamples,
       },
       {
         name: 'FrighteningOrShaming',
         type: 'DENY',
-        definition: 'Amenazar, asustar, avergonzar o castigar a un niño, o decirle que no recibirá regalos por portarse mal.',
-        examples: ['Dile que este año no tendrá regalos por malo', 'Asústale para que obedezca'],
+        definition: guardrailText.shaming,
+        examples: guardrailText.shamingExamples,
       },
     ],
   },
@@ -259,7 +279,12 @@ function env(targets: IFunction[], values: Record<string, string>) {
     for (const [k, v] of Object.entries(values)) lambda.addEnvironment(k, v);
   }
 }
-env(allFns, { BOOKINGS_TABLE: table.tableName, STATS_TABLE: statsTable.tableName });
+env(allFns, {
+  BOOKINGS_TABLE: table.tableName,
+  STATS_TABLE: statsTable.tableName,
+  SANTA_LANGUAGE: config.language,
+  CALL_TIMEZONE: config.callTimezone,
+});
 env([fns.bookingsApi, fns.dialer, fns.callOutcome], {
   SCHEDULE_GROUP: scheduleGroup.name!,
   SCHEDULER_ROLE_ARN: schedulerRole.roleArn,
@@ -371,14 +396,11 @@ cfnUserPool.userAttributeUpdateSettings = { attributesRequireVerificationBeforeU
 cfnUserPool.adminCreateUserConfig = {
   ...(cfnUserPool.adminCreateUserConfig as CfnUserPool.AdminCreateUserConfigProperty),
   allowAdminCreateUserOnly: true,
-  // Invitation sent when an admin creates the user.
-  inviteMessageTemplate: {
-    emailSubject: 'Ya puedes avisar a Santa',
-    emailMessage:
-      `¡Hola! Ya tienes acceso a la Llamada de Santa${config.appUrl ? ` (${config.appUrl})` : ''}.<br><br>` +
-      'Entra con tu email {username} y esta contraseña temporal: <b>{####}</b><br>' +
-      'Te pedirá que elijas una contraseña nueva.',
-  },
+  // Invitation sent when an admin creates the user, in the same design as the letter.
+  inviteMessageTemplate: (() => {
+    const invite = cognitoInviteEmail(config.appUrl || undefined);
+    return { emailSubject: invite.subject, emailMessage: invite.html };
+  })(),
 };
 // No guest access: the data API only accepts signed-in users, so unauthenticated identities are never needed.
 backend.auth.resources.cfnResources.cfnIdentityPool.allowUnauthenticatedIdentities = false;
@@ -390,7 +412,8 @@ backend.auth.resources.cfnResources.cfnIdentityPool.allowUnauthenticatedIdentiti
 if (config.cognitoEmailViaSes) {
   const identityName = config.sesIdentity || config.senderEmail;
   const identityArn = `arn:${Aws.PARTITION}:ses:${authStack.region}:${authStack.account}:identity/${identityName}`;
-  const policyName = 'AllowCognitoUserPoolEmail';
+  // One policy per deployment: several stacks can share the same SES identity (e.g. two languages).
+  const policyName = `AllowCognitoUserPoolEmail-${authStack.node.addr.slice(0, 8)}`;
   const policyDocument = JSON.stringify({
     Version: '2012-10-17',
     Statement: [
@@ -474,6 +497,10 @@ backend.addOutput({
     requirePhoneVerification: config.requirePhoneVerification,
     // Shown to parents so they can save Santa's number in their contacts.
     santaCallerNumber: config.connectSourcePhoneNumber,
+    // The web app follows the same language, time zone and phone rules as the backend.
+    language: config.language,
+    callTimezone: config.callTimezone,
+    allowedPhonePrefixes: config.allowedPhonePrefixes.split(',').map((p) => p.trim()).filter(Boolean),
   },
 });
 

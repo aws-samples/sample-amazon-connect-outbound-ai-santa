@@ -5,6 +5,7 @@ import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
 import { QConnectClient, UpdateSessionDataCommand } from '@aws-sdk/client-qconnect';
 import type { ConnectContactFlowEvent, ConnectContactFlowResult } from 'aws-lambda';
 import { getBooking, setStatus } from '../../shared/bookings.js';
+import { msg } from '../../shared/i18n.js';
 import { bumpStats, talkStats } from '../../shared/stats.js';
 import { sanitizeFreeText } from '../../shared/validation.js';
 
@@ -57,7 +58,7 @@ async function start(bookingId: string, contactId: string, instanceArn: string):
       sessionId: session.sessionId,
       data: [
         { key: 'childName', value: { stringValue: booking.childName } },
-        { key: 'childNotes', value: { stringValue: booking.notes || 'Sin notas.' } },
+        { key: 'childNotes', value: { stringValue: booking.notes || msg().noNotes } },
       ],
     }),
   );

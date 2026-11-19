@@ -4,16 +4,32 @@ The backend creates the Lambdas and associates `flow-handler` with your instance
 the conversational AI bot and the contact flow are created in the Connect admin website, using
 the files in this folder. Do this after the first `npm run sandbox` deploy.
 
-Tested region: Europe (Frankfurt), where Amazon Connect agentic voice is available.
+Tested region: Europe (Frankfurt), where Amazon Connect agentic voice is available. Use a Region
+with agentic voice for the language you deploy.
+
+## Language
+
+The files in this folder come in two languages. Pick the set that matches `SANTA_LANGUAGE` in `.env`
+(the backend uses it for the web app, the emails and the default notes text it passes to the agent):
+
+| `SANTA_LANGUAGE` | AI prompt | Contact flow | Bot locale | Agent locale |
+|---|---|---|---|---|
+| `en` (default) | [`santa-orchestration-prompt.yaml`](santa-orchestration-prompt.yaml) | [`santa-flow.template.json`](santa-flow.template.json) | English (US), `en_US` | `en_US` |
+| `es` | [`santa-orchestration-prompt.es.yaml`](santa-orchestration-prompt.es.yaml) | [`santa-flow.template.es.json`](santa-flow.template.es.json) | Spanish (Spain), `es_ES` | `es_ES` |
+
+Connect does not read `SANTA_LANGUAGE`: you paste the prompt and create the flow yourself, so use the
+files of the same language. The tool schema [`entregar-carta-tool.json`](entregar-carta-tool.json) is
+shared; the tool keeps the name `EntregarCarta` in both languages because the flow checks for it.
+The guardrail settings for each language are in [`agent-guardrail.md`](agent-guardrail.md).
 
 ## 1. Instance settings
 
 1. **Telephony**: outbound calls enabled.
-2. **Phone number**: claim a number that supports outbound calls to Spain. Spanish toll-free
-   numbers (+34 900) need no documents. Local numbers need a Spanish business address and tax ID.
-   Check the outbound column for Spain in the
+2. **Phone number**: claim a number that supports outbound calls to the country you call
+   (`ALLOWED_PHONE_PREFIXES`, `+1` by default). For the US, claim a US DID (local) or toll-free
+   number in the Connect admin website. Check the outbound column for your destination country in the
    [Telecoms Country Coverage Guide](https://d1v2gagwb6hfe1.cloudfront.net/Amazon_Connect_Telecoms_Coverage.pdf)
-   before relying on a toll-free number as caller ID.
+   before relying on a number as caller ID.
 3. **Data storage**: leave call recordings unset or off. This sample does not record.
 4. **Flow logs**: keep them off for the Santa flow (step 4.1). They would write the wishlist to CloudWatch.
 
@@ -21,19 +37,21 @@ Tested region: Europe (Frankfurt), where Amazon Connect agentic voice is availab
 
 In **AI agent designer**:
 
-1. **AI prompts → Create AI prompt**, type **Orchestration**, model `eu.anthropic.claude-haiku-4-5-20251001-v1:0`
-   (the same model as the system `SelfServiceOrchestrationVoice` prompt). Paste the whole of
-   [`santa-orchestration-prompt.yaml`](santa-orchestration-prompt.yaml) as the prompt and publish.
+1. **AI prompts → Create AI prompt**, type **Orchestration**, the same model as the system
+   `SelfServiceOrchestrationVoice` prompt in your Region (Claude Haiku 4.5, for example
+   `eu.anthropic.claude-haiku-4-5-20251001-v1:0` in Europe or `us.anthropic.claude-haiku-4-5-20251001-v1:0`
+   in the US). Paste the whole of [`santa-orchestration-prompt.yaml`](santa-orchestration-prompt.yaml)
+   (or the `.es.yaml` file for Spanish) as the prompt and publish.
    It follows the structure of `SelfServiceOrchestrationVoice`:
    - `system` holds the instructions.
    - `messages` holds `{{$.conversationHistory}}` and an assistant turn prefilled with `<message>`.
    - It uses the system variables `{{$.toolConfigurationList}}`, `{{$.locale}}`, `{{$.contactId}}` and `{{$.dateTime}}`.
    - It uses the custom variables `{{$.Custom.childName}}` and `{{$.Custom.childNotes}}`, which `flow-handler` sets.
    - It keeps the sections of the system prompt adapted to Santa, and drops the sub-agent protocol because this agent has no sub-agents.
-2. **AI guardrails → Create** with the settings in [`agent-guardrail.md`](agent-guardrail.md). Publish.
+2. **AI guardrails → Create** with the settings in [`agent-guardrail.md`](agent-guardrail.md) for your language. Publish.
 3. **AI agents → Create AI agent**, type **Orchestration**, copied from `SelfServiceOrchestrator`.
    - Prompt: the one from step 1. Guardrail: the one from step 2.
-   - Locale: `es_ES`.
+   - Locale: `en_US` (`es_ES` for Spanish).
    - Tools: remove `Escalate` (no human agents). Keep `Complete`, with this instruction:
      `Use Complete only when you could not talk with the child: a voicemail greeting or recording, silence, only noise, or nobody came to the phone. In the same turn, say one short, cheerful goodbye in a <message></message> and do not leave a voicemail message. Never use Complete after talking with the child (use EntregarCarta instead), and never use both tools in the same call.`
    - **Add tool → Create new AI Tool**, name `EntregarCarta`, type **Return to Control**,
@@ -49,20 +67,26 @@ In **AI agent designer**:
 
 ## 3. Conversational AI bot
 
-**Routing → Flows → Conversational AI → Create bot**, locale Spanish (Spain), with the
+**Routing → Flows → Conversational AI → Create bot**, locale English (US) (`en_US`; Spanish (Spain),
+`es_ES`, for a Spanish deployment), with the
 **Amazon Connect AI agent intent** enabled. In the locale settings choose **Amazon Connect agentic
 voice** for speech recognition and voice. Build the locale.
 
+Lex also offers **Audio filler** (a short melody or typing sound while the AI agent prepares the
+reply). We tried it on a real call and turned it off: the built-in sounds don't fit a call with Santa.
+
 ## 4. Contact flow
 
-[`santa-flow.template.json`](santa-flow.template.json) is the flow in Connect flow language.
-Replace the three placeholders and create it:
+[`santa-flow.template.json`](santa-flow.template.json) is the English flow in Connect flow language
+([`santa-flow.template.es.json`](santa-flow.template.es.json) is the Spanish one; it differs only in
+the language code, the voice and the spoken texts). Replace the three placeholders and create it:
 
 | Placeholder | Value |
 |---|---|
 | `${ASSISTANT_ARN}` | AI agent domain ARN: `arn:aws:wisdom:<region>:<account>:assistant/<id>` |
 | `${FLOW_HANDLER_ARN}` | `flowHandlerFunctionArn` in `amplify_outputs.json` |
 | `${LEX_BOT_ALIAS_ARN}` | Alias ARN of the bot from step 3 |
+| `${AI_AGENT_ARN}` | The Santa AI agent: `arn:aws:wisdom:<region>:<account>:ai-agent/<assistant id>/<agent id>:$LATEST` |
 
 ```bash
 aws connect create-contact-flow --instance-id <instance-id> --name Santa --type CONTACT_FLOW \
@@ -70,8 +94,9 @@ aws connect create-contact-flow --instance-id <instance-id> --name Santa --type 
 ```
 
 Then open the flow in the designer and change the **Set voice** block to the **Amazon Connect
-agentic voice** provider, Spanish (Spain). The template uses the Polly voice `Sergio` (generative)
-because the agentic voice IDs are not documented for flow JSON.
+agentic voice** provider, English (US) (Spanish (Spain) for the Spanish flow). The templates use the
+Polly generative voices `Matthew` (English) and `Sergio` (Spanish) because the agentic voice IDs are
+not documented for flow JSON.
 
 ### 4b. Optional: ElevenLabs voice
 
@@ -93,7 +118,7 @@ See [ADR 0005](../docs/adr/0005-elevenlabs-voice.md).
    | Model | `eleven_flash_v2_5` (lowest latency; `eleven_multilingual_v2` sounds better but is slower) |
    | Voice | Your ElevenLabs voice ID |
    | Secrets Manager ARN | `ElevenLabsSecretArn` |
-   | Language | Spanish (Spain) |
+   | Language | English (US), or Spanish (Spain) for the Spanish flow |
 
    Save and publish, then test with a call.
 
@@ -110,18 +135,18 @@ What the flow does:
 |---|---|---|---|
 | 1 | Set logging behavior | Disabled | 2 |
 | 2 | Set recording and analytics behavior | Nothing recorded | 3 |
-| 3 | Set contact data + Set voice | Language `es-ES` | 4 |
+| 3 | Set contact data + Set voice | Language `en-US` (`es-ES`) | 4 |
 | 4 | Connect assistant | AI agent domain | 5. Error → 10 |
 | 5 | Invoke Lambda `flow-handler` | `action` = `start` | `$.External.result` = `ok` → 6, otherwise → 10 |
-| 6 | Get customer input | Bot. Prompt `¡Jo, jo, jo! ¿Hola? ¿Hay alguien ahí?`. 6 s start timeout | 7. Error → 10 |
+| 6 | Get customer input | Bot. Prompt `Ho, ho, ho! Hello? Is anyone there?`. 6 s start timeout | 7. Error → 10 |
 | 7 | Check Lex session attribute `Tool` | `EntregarCarta` → 8. `Complete` or no match → 9 | |
 | 8 | Invoke Lambda `flow-handler` | `action` = `deliver`, `wishlist`, `behaviour`, `summary` from Lex session attributes | 11 |
-| 9 | Invoke Lambda `flow-handler` | `action` = `noResponse` | Play `¡Jo, jo, jo! Soy Santa. Volveré a llamar un poco más tarde.` → 11 |
-| 10 | Play prompt | `¡Jo, jo, jo! Los elfos tienen un lío con los cables. ¡Hasta pronto!` | 11 |
+| 9 | Invoke Lambda `flow-handler` | `action` = `noResponse` | Play `Ho, ho, ho! It's Santa. I'll call back a little later.` → 11 |
+| 10 | Play prompt | `Ho, ho, ho! The elves got tangled in the wires. Talk soon!` | 11 |
 | 11 | Disconnect | | |
 
 Publish the flow and copy its ID (the last part of the flow ARN) into `CONNECT_CONTACT_FLOW_ID`.
-Set `CONNECT_SOURCE_PHONE_NUMBER` to the claimed number in E.164 (`+34900…`), then run
+Set `CONNECT_SOURCE_PHONE_NUMBER` to the claimed number in E.164 (for example `+12125550123`), then run
 `npm run sandbox` again.
 
 Why no Set contact attributes block after step 7: contact attributes are kept in the contact
@@ -141,18 +166,29 @@ This path has not been tested yet.
 ## 6. Test the AI agent by text
 
 `scripts/santa-chat-test.py` starts a Connect chat on the Santa flow with a synthetic booking and plays a
-scenario from `scripts/chat-scenarios/`. It exercises the same flow, AI agent, prompt, guardrail and
+scenario from `scripts/chat-scenarios/` (English) or `scripts/chat-scenarios/es/` (Spanish). It
+exercises the same flow, AI agent, prompt, guardrail and
 `EntregarCarta` hand-over as a call, without telephony, and the letter arrives at `TEST_PARENT_EMAIL`.
 The voice (speech recognition, TTS, latency) is not covered. Run all scenarios after every prompt change.
 
 ```bash
 set -a; . ./.env; set +a
 export AWS_PROFILE=<profile> TEST_PARENT_EMAIL=success@simulator.amazonses.com BOOKINGS_TABLE=<bookingsTable from amplify_outputs.json>
-for f in scripts/chat-scenarios/*.json; do python3 scripts/santa-chat-test.py "$f"; done
+for f in scripts/chat-scenarios/*.json; do python3 scripts/santa-chat-test.py "$f"; done      # English
+for f in scripts/chat-scenarios/es/*.json; do python3 scripts/santa-chat-test.py "$f"; done   # Spanish
 ```
 
 `success@simulator.amazonses.com` is the SES mailbox simulator: SES accepts the letter without
 delivering it, also in sandbox. Use a real verified address only when you want to see the email.
 Run the scenarios one at a time: ten or more chats at once make some fail in the flow's error branch.
-Santa lines that come from the guardrail are tagged `[GUARDRAIL]`.
+Santa lines that come from the guardrail are tagged `[GUARDRAIL]`, in either language.
+
+## Spanish deployment
+
+For calls in Spanish to Spain, set `SANTA_LANGUAGE=es`, `ALLOWED_PHONE_PREFIXES=+34`,
+`CALL_TIMEZONE=Europe/Madrid`, `NOTIFY_COUNTRIES=ES` and `GIFT_LINKS_DOMAIN=amazon.es`, and use the `.es` prompt and flow, the
+`es_ES` bot and agent locale, and the Spanish guardrail settings. For the phone number: Spanish
+toll-free numbers (+34 900) need no documents; local numbers need a Spanish business address and tax
+ID. Check the outbound column for Spain in the coverage guide before relying on a toll-free number as
+caller ID.
 

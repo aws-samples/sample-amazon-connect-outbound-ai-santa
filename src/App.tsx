@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 import { Authenticator, useAuthenticator } from '@aws-amplify/ui-react';
+import { t } from './i18n.ts';
 import { SantaHome } from './components/SantaHome.tsx';
 import { Snow } from './components/Snow.tsx';
 import { Elf } from './components/illustrations/Elf.tsx';
@@ -8,12 +9,8 @@ import { CalendarIcon, LetterIcon, PhoneIcon, RingingPhoneIcon } from './compone
 import { Santa } from './components/illustrations/Santa.tsx';
 import { Village } from './components/illustrations/Village.tsx';
 
-const FLOW = [
-  { icon: PhoneIcon, title: 'Verifica tu móvil', sub: 'Te llega un código por SMS' },
-  { icon: CalendarIcon, title: 'Elige día y hora', sub: 'Y cuéntale a Santa algo de tu peque' },
-  { icon: RingingPhoneIcon, title: 'Santa llama', sub: 'Charla con tu peque en español' },
-  { icon: LetterIcon, title: 'Recibe la carta', sub: 'Con sus deseos, en tu email' },
-];
+const FLOW_ICONS = [PhoneIcon, CalendarIcon, RingingPhoneIcon, LetterIcon];
+const FLOW = t.flow.map((step, i) => ({ ...step, icon: FLOW_ICONS[i] }));
 
 function Welcome() {
   return (
@@ -23,8 +20,8 @@ function Welcome() {
         <Elf className="welcome-elf" />
       </div>
       <div className="welcome-text">
-        <h1 className="logo">Llamada de Santa</h1>
-        <ol className="flow" aria-label="Cómo funciona">
+        <h1 className="logo">{t.appTitle}</h1>
+        <ol className="flow" aria-label={t.howItWorks}>
           {FLOW.map(({ icon: Icon, title, sub }, i) => (
             <li key={title} className="flow-step">
               <span className="flow-badge">
@@ -45,8 +42,8 @@ function Welcome() {
 
 const authHeader = () => (
   <div className="auth-header">
-    <h2>¡Hola, familia!</h2>
-    <p>Entra con tu cuenta para avisar a Santa</p>
+    <h2>{t.authHello}</h2>
+    <p>{t.authSub}</p>
   </div>
 );
 
@@ -73,7 +70,7 @@ export default function App() {
         <Layout />
       </Authenticator.Provider>
       <Village className="village" />
-      <footer className="footer">Demo con Amazon Connect · Santa no graba las llamadas</footer>
+      <footer className="footer">{t.footer}</footer>
     </div>
   );
 }

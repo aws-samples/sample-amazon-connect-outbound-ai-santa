@@ -433,6 +433,7 @@ input[aria-invalid='true'] { border-color: var(--red); }
 .phone-input { display: flex; align-items: center; gap: 8px; }
 .phone-input span { font-weight: 800; color: var(--green); background: var(--beige); border-radius: 10px; padding: 10px; }
 .phone-input input { flex: 1; }
+.phone-input .phone-prefix { flex: 0 0 auto; width: auto; font-weight: 800; color: var(--green); }
 .send-info { margin: 0; color: var(--muted); line-height: 1.6; }
 .send-info strong { color: var(--ink); }
 
