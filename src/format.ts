@@ -91,7 +91,7 @@ export function daysUntil(date: string, now = new Date()): number {
   return Math.round((toUtc(date) - toUtc(todayInCallZone(now))) / 86_400_000);
 }
 
-/** «¡Es hoy!», «Mañana», «Faltan 3 días» (or the English equivalents). Empty when the date has passed. */
+/** «It's today!», «It's tomorrow!», «3 days to go». Empty when the date has passed. */
 export function countdownLabel(date: string, now = new Date()): string {
   const days = daysUntil(date, now);
   if (days < 0) return '';
@@ -100,7 +100,7 @@ export function countdownLabel(date: string, now = new Date()): string {
   return t.countdownDays(days);
 }
 
-/** «Thursday, December 24» / «jueves, 24 de diciembre». */
+/** «Thursday, December 24». */
 export function formatCallDate(date: string): string {
   const [y, m, d] = date.split('-').map(Number);
   // Noon UTC keeps the same calendar day in any zone from UTC-11 to UTC+11, whatever the DST offset.
@@ -112,14 +112,13 @@ export function formatCallDate(date: string): string {
   }).format(new Date(Date.UTC(y, m - 1, d, 12)));
 }
 
-/** A `HH:MM` slot as people read it: «6:00 PM» in English, «18:00» in Spanish. */
+/** A `HH:MM` slot as people read it: «6:00 PM». */
 export function formatTime(time: string): string {
-  if (t.locale === 'es-ES') return time;
   const [h, m] = time.split(':').map(Number);
   return `${((h + 11) % 12) + 1}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`;
 }
 
-/** «Thursday, December 24 at 6:00 PM» / «jueves, 24 de diciembre a las 18:00». */
+/** «Thursday, December 24 at 6:00 PM». */
 export function formatCallWhen(date: string, time: string): string {
   return t.callWhen(formatCallDate(date), formatTime(time));
 }
@@ -131,7 +130,7 @@ export function zoneCity(zone = CALL_TIMEZONE): string {
 
 const ymd = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
 
-/** One-letter weekday names in calendar order: «L M X J V S D» in Spanish, «S M T W T F S» in English. */
+/** One-letter weekday names in calendar order: «S M T W T F S». */
 export function weekdayInitials(): string[] {
   const narrow = new Intl.DateTimeFormat(locale, { weekday: 'narrow', timeZone: 'UTC' });
   // 4 January 2026 is a Sunday.
@@ -145,7 +144,7 @@ export function monthCells(y: number, m: number): (string | null)[] {
   return [...Array<null>(lead).fill(null), ...Array.from({ length: count }, (_, i) => ymd(y, m, i + 1))];
 }
 
-/** «December 2026» / «diciembre de 2026». */
+/** «December 2026». */
 export function formatMonth(y: number, m: number): string {
   return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(Date.UTC(y, m, 1));
 }

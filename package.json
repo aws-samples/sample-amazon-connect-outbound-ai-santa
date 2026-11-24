@@ -12,9 +12,13 @@
     "typecheck": "tsc -b && tsc -p amplify/tsconfig.json",
     "sandbox": "set -a && . ./.env && set +a && ampx sandbox",
     "elevenlabs:secret": "bash scripts/elevenlabs-secret.sh",
-    "notify:setup": "bash scripts/setup-notify.sh",
+    "notify:setup": "node scripts/notify-setup.mjs",
     "sandbox:delete": "set -a && . ./.env && set +a && ampx sandbox delete",
-    "nag": "sh scripts/nag.sh"
+    "nag": "sh scripts/nag.sh",
+    "setup": "node scripts/setup.mjs",
+    "designer:setup": "node scripts/designer-setup.mjs",
+    "connect:flow": "node scripts/connect-flow.mjs",
+    "web:deploy": "node scripts/web-deploy.mjs"
   },
   "dependencies": {
     "@aws-amplify/ui-react": "6.15.7",
@@ -24,7 +28,6 @@
     "@aws-sdk/client-dynamodb": "3.1168.0",
     "@aws-sdk/client-endusermessaging": "3.1171.0",
     "@aws-sdk/client-lambda": "3.1168.0",
-    "@aws-sdk/client-qconnect": "3.1168.0",
     "@aws-sdk/client-scheduler": "3.1168.0",
     "@aws-sdk/client-sesv2": "3.1168.0",
     "@aws-sdk/lib-dynamodb": "3.1168.0",
@@ -38,11 +41,16 @@
   "devDependencies": {
     "@aws-amplify/backend": "1.25.1",
     "@aws-amplify/backend-cli": "1.10.0",
+    "@aws-sdk/client-amplify": "3.1172.0",
+    "@aws-sdk/client-cloudformation": "3.1172.0",
+    "@aws-sdk/client-pinpoint-sms-voice-v2": "3.1172.0",
+    "@aws-sdk/client-sts": "3.1172.0",
     "@types/aws-lambda": "8.10.164",
     "@types/node": "24.19.2",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.3.0",
+    "amazon-connect-acxd-sdk": "0.5.0",
     "aws-cdk": "2.1148.1",
     "aws-cdk-lib": "2.277.0",
     "aws-sdk-client-mock": "4.1.0",
@@ -55,7 +63,7 @@
     "vite": "8.3.8",
     "vitest": "5.1.0"
   },
-  "description": "Santa calls your child with an Amazon Connect AI agent and emails the parents the wishlist",
+  "description": "Santa calls your child through Amazon Connect and an Agentic CX designer agent, and emails the parents the wishlist",
   "license": "MIT-0",
   "overrides": {
     "handlebars": "4.7.10",

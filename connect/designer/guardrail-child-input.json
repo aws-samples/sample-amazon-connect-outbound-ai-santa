@@ -1,0 +1,115 @@
+{
+  "name": "Santa Child Input Guardrail",
+  "description": "What the child says: swear words, sex and obvious prompt attacks; phone, email, card and password masked.",
+  "trigger": "input",
+  "active": true,
+  "fallbackBehavior": {
+    "type": "continue"
+  },
+  "metadata": {
+    "path": "/santa",
+    "tags": [
+      "santa"
+    ]
+  },
+  "rules": [
+    {
+      "name": "Swear words",
+      "detection": {
+        "method": "regex",
+        "pattern": "(^|[^a-zA-Z])([Ff]uck(ing|er|ed)?|[Ss]hit(ty)?|[Bb]ullshit|[Bb]itch|[Aa]sshole|[Bb]astard|[Cc]unt|[Dd]ick(head)?|[Pp]ussy|[Ss]lut|[Ww]hore|[Mm]otherfucker)s?([^a-zA-Z]|$)"
+      },
+      "enforcement": {
+        "action": "modify",
+        "behavior": {
+          "message": "Ho, ho, ho! The wind at the North Pole is so loud I couldn't hear you. Can you tell me what you'd like for Christmas?"
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Swear words 2",
+      "detection": {
+        "method": "regex",
+        "pattern": "(^|[^a-zA-Z])([Rr]etard(ed)?|[Ww]anker|[Tt]wat|[Pp]rick|[Cc]ock|[Bb]ollocks|[Dd]ouche(bag)?|[Jj]ackass|[Gg]oddamn|[Ff]ag(got)?|[Nn]igg(a|er))s?([^a-zA-Z]|$)"
+      },
+      "enforcement": {
+        "action": "modify",
+        "behavior": {
+          "message": "Ho, ho, ho! The wind at the North Pole is so loud I couldn't hear you. Can you tell me what you'd like for Christmas?"
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Sex and obvious attacks",
+      "detection": {
+        "method": "regex",
+        "pattern": "(^|[^a-zA-Z])([Ss]ex(y|ual)?|[Pp]orn(o|ography)?|[Nn]aked|[Ii]gnore (all|previous|your)|[Ff]orget (your|that you|you are)|[Pp]rompts?)([^a-zA-Z]|$)"
+      },
+      "enforcement": {
+        "action": "modify",
+        "behavior": {
+          "message": "Ho, ho, ho! The wind at the North Pole is so loud I couldn't hear you. Can you tell me what you'd like for Christmas?"
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Phone",
+      "detection": {
+        "method": "regex",
+        "pattern": "(\\+?1[\\s.-]?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}|(\\+?34[\\s.-]?)?[6789]\\d{2}[\\s.-]?\\d{3}[\\s.-]?\\d{3}"
+      },
+      "enforcement": {
+        "action": "mask",
+        "behavior": {
+          "maskText": "[phone]"
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Email",
+      "detection": {
+        "method": "regex",
+        "pattern": "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+      },
+      "enforcement": {
+        "action": "mask",
+        "behavior": {
+          "maskText": "[email]"
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Card",
+      "detection": {
+        "method": "regex",
+        "pattern": "\\b(?:\\d[ -]?){13,19}\\b"
+      },
+      "enforcement": {
+        "action": "mask",
+        "behavior": {
+          "maskText": "[card]"
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Password",
+      "detection": {
+        "method": "regex",
+        "pattern": "([Pp]assword|[Pp]asscode|[Pp]in code|PIN)( is| was|:)?\\s+\\S+"
+      },
+      "enforcement": {
+        "action": "mask",
+        "behavior": {
+          "maskText": "[password]"
+        }
+      },
+      "active": true
+    }
+  ]
+}

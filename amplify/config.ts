@@ -16,24 +16,24 @@ function required(name: string): string {
   return value;
 }
 
+/** Geographic prefix of Bedrock cross-Region inference profiles for a Region, e.g. `us-east-1` → `us`. */
+export function inferenceProfilePrefix(region: string): 'us' | 'eu' | 'apac' {
+  if (region.startsWith('eu-')) return 'eu';
+  if (region.startsWith('ap-')) return 'apac';
+  return 'us';
+}
+
 export const config = {
-  /**
-   * Language of everything parents and children see and hear: `en` (default) or `es`. Pick the matching
-   * AI prompt and contact flow in connect/ (see the README, "Language and country").
-   */
-  language: (optional('SANTA_LANGUAGE', 'en') === 'es' ? 'es' : 'en') as 'en' | 'es',
-  /** IANA time zone for the call window, the call date and the daily limits, e.g. America/New_York or Europe/Madrid. */
+  /** IANA time zone for the call window, the call date and the daily limits, e.g. America/New_York or Europe/London. */
   callTimezone: optional('CALL_TIMEZONE', 'America/New_York'),
   /** Amazon Connect instance ID (not the ARN). Required: Lambdas are associated with it. */
   connectInstanceId: required('CONNECT_INSTANCE_ID'),
-  /** Published Santa contact flow ID. Empty on the first deploy; the dialer refuses to call until set. */
+  /** Published `Santa Outbound Call` contact flow ID. Empty on the first deploy; the dialer refuses to call until set. */
   connectContactFlowId: optional('CONNECT_CONTACT_FLOW_ID'),
   /** Claimed number used as caller ID, E.164. */
   connectSourcePhoneNumber: optional('CONNECT_SOURCE_PHONE_NUMBER'),
   /** Optional outbound campaign ID. When set, calls use TrafficType=CAMPAIGN with answering machine detection. */
   connectCampaignId: optional('CONNECT_CAMPAIGN_ID'),
-  /** Connect AI agent (Q in Connect) assistant ID, used to pass child context into the AI agent session. */
-  qconnectAssistantId: optional('QCONNECT_ASSISTANT_ID'),
   /** Verified SES identity used as sender. */
   senderEmail: required('SANTA_SENDER_EMAIL'),
   /**
@@ -62,8 +62,12 @@ export const config = {
    */
   notifyConfigurationArn: optional('NOTIFY_CONFIGURATION_ARN'),
   notifyCodeConfigurationId: optional('NOTIFY_CODE_CONFIGURATION_ID'),
-  /** Bedrock model or inference profile for writing the parent email. */
-  bedrockModelId: optional('BEDROCK_MODEL_ID', 'eu.amazon.nova-lite-v1:0'),
+  /**
+   * Bedrock model or inference profile for writing the parent email. The default is Amazon Nova Lite through
+   * the cross-Region inference profile of the deployment Region (`us.` in the US, `eu.` in Europe, `apac.` in
+   * Asia Pacific). Set the full ID to use another model.
+   */
+  bedrockModelId: optional('BEDROCK_MODEL_ID') || `${inferenceProfilePrefix(optional('AWS_REGION'))}.amazon.nova-lite-v1:0`,
   /** Call window in CALL_TIMEZONE wall-clock time, HH:MM. */
   callWindowStart: optional('CALL_WINDOW_START', '09:00'),
   callWindowEnd: optional('CALL_WINDOW_END', '22:00'),

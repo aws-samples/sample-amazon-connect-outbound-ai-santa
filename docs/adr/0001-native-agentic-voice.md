@@ -1,6 +1,7 @@
 # 1. Amazon Connect agentic voice instead of a third-party voice
 
-Status: Accepted
+Status: Accepted. The orchestration AI agent and the Spanish voice were replaced by an Agentic CX
+designer application speaking US English (ADR 0007); agentic voice stays.
 
 ## Context
 

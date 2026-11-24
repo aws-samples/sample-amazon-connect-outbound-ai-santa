@@ -16,7 +16,7 @@ afterEach(() => {
 describe('pre-sign-up', () => {
   it('blocks self sign-up outside the allowlist', async () => {
     process.env.SIGNUP_ALLOWLIST = '@example.com';
-    await expect(run(event('PreSignUp_SignUp', 'someone@other.org'))).rejects.toThrow(/no está autorizado/);
+    await expect(run(event('PreSignUp_SignUp', 'someone@other.org'))).rejects.toThrow(/isn't allowed/);
     await expect(run(event('PreSignUp_SignUp', 'parent@example.com'))).resolves.toBeTruthy();
   });
 

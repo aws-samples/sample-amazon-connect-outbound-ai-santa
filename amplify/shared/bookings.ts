@@ -13,7 +13,7 @@ import {
 /**
  * SCHEDULED   waiting for the scheduler
  * CALLING     dialer started the outbound call
- * IN_CALL     the flow reached the AI agent (someone answered)
+ * IN_CALL     the flow reached the Santa agent (someone answered)
  * NO_RESPONSE the flow detected voicemail or silence
  * DELIVERED   Santa finished; the letter email is being sent
  * Completed, missed and cancelled bookings are deleted, not kept with a final status.
@@ -37,7 +37,7 @@ export interface Booking {
   wishes?: string[];
   behaviour?: string;
   summary?: string;
-  /** ISO time the flow reached the AI agent. Used only for the average call length. */
+  /** ISO time the flow reached the Santa agent. Used only for the average call length. */
   answeredAt?: string;
   createdAt: string;
   /** Epoch seconds. DynamoDB deletes the item after this as a safety net. */

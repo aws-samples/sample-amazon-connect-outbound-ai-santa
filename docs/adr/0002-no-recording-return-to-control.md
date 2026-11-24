@@ -1,6 +1,7 @@
 # 2. Return to Control tool instead of a post-call transcript
 
-Status: Accepted
+Status: Accepted. Since ADR 0007 the hand-over is the designer exit condition `DeliverLetter`
+instead of the `EntregarCarta` tool; recording and analytics stay off.
 
 ## Context
 

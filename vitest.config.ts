@@ -4,7 +4,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
-    include: ['amplify/**/*.test.ts', 'src/**/*.test.ts'],
+    include: ['amplify/**/*.test.ts', 'src/**/*.test.ts', 'scripts/**/*.test.mjs'],
     environment: 'node',
     env: {
       BOOKINGS_TABLE: 'Bookings',
@@ -16,6 +16,8 @@ export default defineConfig({
       SENDER_EMAIL: 'santa@example.com',
       USER_POOL_ID: 'eu-central-1_test',
       CONNECT_INSTANCE_ID: 'instance-1',
+      // amplify/config.ts needs these two to be importable in tests.
+      SANTA_SENDER_EMAIL: 'santa@example.com',
       CONNECT_CONTACT_FLOW_ID: 'flow-1',
       CONNECT_SOURCE_PHONE_NUMBER: '+34900000000',
       SEND_LETTER_FUNCTION_NAME: 'send-letter',
@@ -24,8 +26,7 @@ export default defineConfig({
       RETRY_DELAY_MINUTES: '15',
       AWS_REGION: 'eu-central-1',
       REQUIRE_PHONE_VERIFICATION: 'true',
-      // The backend tests were written for the Spanish deployment; English/US cases set these per test.
-      SANTA_LANGUAGE: 'es',
+      // Calls placed from Europe to Spanish numbers; i18n.test.ts covers the US defaults.
       CALL_TIMEZONE: 'Europe/Madrid',
       ALLOWED_PHONE_PREFIXES: '+34',
     },

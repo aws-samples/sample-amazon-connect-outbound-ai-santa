@@ -1,9 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 import { ApplyGuardrailCommand, BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
-import { ConnectClient, DescribeContactCommand, StartOutboundVoiceContactCommand } from '@aws-sdk/client-connect';
+import { ConnectClient, StartOutboundVoiceContactCommand } from '@aws-sdk/client-connect';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
-import { QConnectClient, UpdateSessionDataCommand } from '@aws-sdk/client-qconnect';
 import { CreateScheduleCommand, SchedulerClient } from '@aws-sdk/client-scheduler';
 import { SendEmailCommand, SESv2Client } from '@aws-sdk/client-sesv2';
 import { DeleteCommand, DynamoDBDocumentClient, GetCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
@@ -13,12 +12,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import type { Booking } from '../shared/bookings.js';
 import { handler as outcome } from './call-outcome/handler.js';
 import { buildCallRequest, handler as dial } from './dialer/handler.js';
-import { handler as flow, parseSessionArn, parseWishes } from './flow-handler/handler.js';
+import { handler as flow, parseWishes } from './flow-handler/handler.js';
 import { handler as sendLetter } from './send-letter/handler.js';
 
 const ddb = mockClient(DynamoDBDocumentClient);
 const connect = mockClient(ConnectClient);
-const qconnect = mockClient(QConnectClient);
 const lambda = mockClient(LambdaClient);
 const scheduler = mockClient(SchedulerClient);
 const ses = mockClient(SESv2Client);
@@ -27,7 +25,7 @@ const bedrock = mockClient(BedrockRuntimeClient);
 const base: Booking = {
   bookingId: 'b1',
   ownerSub: 'user-1',
-  childName: 'Lucía',
+  childName: 'Lucy',
   notes: 'Le gustan los dinosaurios',
   parentEmail: 'parent@example.com',
   phoneNumber: '+34600123456',
@@ -59,7 +57,7 @@ function disconnect(): EventBridgeEvent<'Amazon Connect Contact Event', { eventT
 }
 
 beforeEach(() => {
-  for (const m of [ddb, connect, qconnect, lambda, scheduler, ses, bedrock]) m.reset();
+  for (const m of [ddb, connect, lambda, scheduler, ses, bedrock]) m.reset();
 });
 
 describe('dialer', () => {
@@ -104,24 +102,20 @@ describe('dialer', () => {
 
 describe('flow-handler', () => {
   it('parses wishes from a JSON array or a separated list, capped and sanitised', () => {
-    expect(parseWishes('["Una bici", "Un dinosaurio <grande>"]')).toEqual(['Una bici', 'Un dinosaurio grande']);
-    expect(parseWishes('bici, patinete; muñeca')).toEqual(['bici', 'patinete', 'muñeca']);
+    expect(parseWishes('["A bike", "A dinosaur <big>"]')).toEqual(['A bike', 'A dinosaur big']);
+    expect(parseWishes('bike, scooter; doll')).toEqual(['bike', 'scooter', 'doll']);
     expect(parseWishes(Array.from({ length: 30 }, (_, i) => `w${i}`).join(','))).toHaveLength(15);
   });
 
-  it('parses the AI agent session ARN', () => {
-    expect(parseSessionArn('arn:aws:wisdom:eu-central-1:111111111111:session/assist-1/sess-1')).toEqual({ assistantId: 'assist-1', sessionId: 'sess-1' });
+  it('start: returns the child context to the flow and marks the call IN_CALL', async () => {
+    withBooking({ status: 'CALLING', contactId: 'c1', notes: 'Loves <dinosaurs>' });
+    await expect(flow(flowEvent('start'))).resolves.toEqual({ result: 'ok', childName: 'Lucy', childNotes: 'Loves dinosaurs' });
+    expect(ddb.commandCalls(UpdateCommand)[0].args[0].input.ExpressionAttributeValues).toMatchObject({ ':s': 'IN_CALL' });
   });
-
-  it('start: passes child context to the AI agent session and marks the call IN_CALL', async () => {
-    withBooking({ status: 'CALLING', contactId: 'c1' });
-    connect.on(DescribeContactCommand).resolves({ Contact: { WisdomInfo: { SessionArn: 'arn:aws:wisdom:eu-central-1:1:session/a1/s1' } } });
-    await expect(flow(flowEvent('start'))).resolves.toEqual({ result: 'ok' });
-    const data = qconnect.commandCalls(UpdateSessionDataCommand)[0].args[0].input;
-    expect(data.sessionId).toBe('s1');
-    expect(data.data).toContainEqual({ key: 'childName', value: { stringValue: 'Lucía' } });
+  it('start: says there are no notes when the parents left none', async () => {
+    withBooking({ status: 'CALLING', contactId: 'c1', notes: '' });
+    await expect(flow(flowEvent('start'))).resolves.toMatchObject({ result: 'ok', childNotes: 'No notes.' });
   });
-
   it('start: ignores a contact that does not match the booking', async () => {
     withBooking({ status: 'CALLING', contactId: 'other' });
     await expect(flow(flowEvent('start'))).resolves.toEqual({ result: 'unknown' });
@@ -129,9 +123,9 @@ describe('flow-handler', () => {
 
   it('deliver: stores the wishes and hands off to send-letter asynchronously', async () => {
     withBooking({ status: 'IN_CALL', contactId: 'c1' });
-    await expect(flow(flowEvent('deliver', { wishlist: '["bici"]', behaviour: 'muy bien', summary: 'Charla' }))).resolves.toEqual({ result: 'ok' });
+    await expect(flow(flowEvent('deliver', { wishlist: '["bike"]', behaviour: 'very good', summary: 'Chat' }))).resolves.toEqual({ result: 'ok' });
     const update = ddb.commandCalls(UpdateCommand)[0].args[0].input;
-    expect(update.ExpressionAttributeValues).toMatchObject({ ':s': 'DELIVERED', ':wishes': ['bici'] });
+    expect(update.ExpressionAttributeValues).toMatchObject({ ':s': 'DELIVERED', ':wishes': ['bike'] });
     expect(lambda.commandCalls(InvokeCommand)[0].args[0].input.InvocationType).toBe('Event');
   });
 });
@@ -149,7 +143,7 @@ describe('call-outcome', () => {
     ddb.on(QueryCommand).resolves({ Items: [{ bookingId: 'b1' }] });
     withBooking({ status: 'NO_RESPONSE', contactId: 'c1', attempts: 3 });
     await outcome(disconnect());
-    expect(ses.commandCalls(SendEmailCommand)[0].args[0].input.Content?.Simple?.Subject?.Data).toMatch(/ha intentado llamar/);
+    expect(ses.commandCalls(SendEmailCommand)[0].args[0].input.Content?.Simple?.Subject?.Data).toMatch(/tried to call/);
     expect(ddb.commandCalls(DeleteCommand)).toHaveLength(1);
     expect(scheduler.commandCalls(CreateScheduleCommand)).toHaveLength(0);
   });
@@ -183,7 +177,7 @@ describe('send-letter', () => {
       action: 'GUARDRAIL_INTERVENED',
       assessments: [{ contentPolicy: { filters: [{ type: 'VIOLENCE', confidence: 'HIGH', action: 'BLOCKED' }] } }],
     });
-    bedrock.on(ConverseCommand).resolves({ stopReason: 'end_turn', output: { message: { role: 'assistant', content: [{ text: 'Párrafo uno.\n\nPárrafo dos.' }] } } });
+    bedrock.on(ConverseCommand).resolves({ stopReason: 'end_turn', output: { message: { role: 'assistant', content: [{ text: 'Paragraph one.\n\nParagraph two.' }] } } });
 
     await sendLetter({ bookingId: 'b1' });
 
@@ -199,6 +193,6 @@ describe('send-letter', () => {
     bedrock.on(ApplyGuardrailCommand).resolves({ action: 'NONE' });
     bedrock.on(ConverseCommand).resolves({ stopReason: 'guardrail_intervened', output: { message: { role: 'assistant', content: [{ text: 'x' }] } } });
     await sendLetter({ bookingId: 'b1' });
-    expect(ses.commandCalls(SendEmailCommand)[0].args[0].input.Content?.Simple?.Body?.Text?.Data).toContain('Acabo de hablar con Lucía');
+    expect(ses.commandCalls(SendEmailCommand)[0].args[0].input.Content?.Simple?.Body?.Text?.Data).toContain("I've just talked to Lucy");
   });
 });

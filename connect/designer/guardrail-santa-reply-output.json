@@ -1,0 +1,73 @@
+{
+  "name": "Santa Reply Output Guardrail",
+  "description": "What Santa says: swear words; phone and email masked. The prompt covers the rest.",
+  "trigger": "output",
+  "active": true,
+  "fallbackBehavior": {
+    "type": "continue"
+  },
+  "metadata": {
+    "path": "/santa",
+    "tags": [
+      "santa"
+    ]
+  },
+  "rules": [
+    {
+      "name": "Swear words",
+      "detection": {
+        "method": "regex",
+        "pattern": "(^|[^a-zA-Z])([Ff]uck(ing|er|ed)?|[Ss]hit(ty)?|[Bb]ullshit|[Bb]itch|[Aa]sshole|[Bb]astard|[Cc]unt|[Dd]ick(head)?|[Pp]ussy|[Ss]lut|[Ww]hore|[Mm]otherfucker)s?([^a-zA-Z]|$)"
+      },
+      "enforcement": {
+        "action": "modify",
+        "behavior": {
+          "message": "Ho, ho, ho! My beard got all tangled up. What else would you like for Christmas?"
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Swear words 2",
+      "detection": {
+        "method": "regex",
+        "pattern": "(^|[^a-zA-Z])([Rr]etard(ed)?|[Ww]anker|[Tt]wat|[Pp]rick|[Cc]ock|[Bb]ollocks|[Dd]ouche(bag)?|[Jj]ackass|[Gg]oddamn|[Ff]ag(got)?|[Nn]igg(a|er))s?([^a-zA-Z]|$)"
+      },
+      "enforcement": {
+        "action": "modify",
+        "behavior": {
+          "message": "Ho, ho, ho! My beard got all tangled up. What else would you like for Christmas?"
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Phone",
+      "detection": {
+        "method": "regex",
+        "pattern": "(\\+?1[\\s.-]?)?\\(?\\d{3}\\)?[\\s.-]?\\d{3}[\\s.-]?\\d{4}|(\\+?34[\\s.-]?)?[6789]\\d{2}[\\s.-]?\\d{3}[\\s.-]?\\d{3}"
+      },
+      "enforcement": {
+        "action": "mask",
+        "behavior": {
+          "maskText": " "
+        }
+      },
+      "active": true
+    },
+    {
+      "name": "Email",
+      "detection": {
+        "method": "regex",
+        "pattern": "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+      },
+      "enforcement": {
+        "action": "mask",
+        "behavior": {
+          "maskText": " "
+        }
+      },
+      "active": true
+    }
+  ]
+}

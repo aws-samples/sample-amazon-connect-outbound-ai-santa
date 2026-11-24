@@ -1,6 +1,8 @@
 # 3. Keep child data out of the Connect contact record
 
-Status: Accepted
+Status: Accepted. Since ADR 0007 `flow-handler` returns the name and notes to the flow and the
+Agentic CX block passes them as context variables; the wishlist comes back through
+`$.AgenticCX.ContextVariables`. Neither is ever a contact attribute.
 
 ## Context
 

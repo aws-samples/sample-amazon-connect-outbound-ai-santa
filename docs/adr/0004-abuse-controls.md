@@ -22,7 +22,7 @@ a child.
 - Notes are limited to 300 characters. Brackets and control characters are stripped. The
   notes pass a Bedrock guardrail (prompt attack, harmful content, two denied topics) before they
   are stored.
-- The Connect AI agent has its own guardrail. The prompt treats the notes as data.
+- The Santa agent has its own guardrails (ADR 0007). The prompt treats the notes as data.
 
 ## Consequences
 

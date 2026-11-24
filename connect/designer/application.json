@@ -1,0 +1,62 @@
+{
+  "name": "Santa Wishlist Agent",
+  "description": "Santa calls the child, collects the Christmas wishlist and hands it back to the Connect flow.",
+  "flows": [
+    {
+      "flowId": "SantaWishlistConversation"
+    },
+    {
+      "flowId": "SantaGoodbyeFallback"
+    }
+  ],
+  "settings": {
+    "languageCode": "en-US",
+    "languageCodes": [
+      "en-US"
+    ],
+    "languageSettings": [
+      {
+        "languageCode": "en-US",
+        "useLex3pAsr": false
+      }
+    ],
+    "guardrails": [
+      {
+        "name": "Santa Child Input Guardrail"
+      },
+      {
+        "name": "Santa Reply Output Guardrail"
+      }
+    ],
+    "defaultFlows": {
+      "welcome": {
+        "flowId": "SantaWishlistConversation"
+      },
+      "fallback": {
+        "flowId": "SantaGoodbyeFallback"
+      },
+      "unknown": {
+        "flowId": "SantaGoodbyeFallback"
+      }
+    },
+    "thresholds": {
+      "incomprehensionCount": 2
+    },
+    "conversationTTL": 5,
+    "repeatOnIncomprehension": false,
+    "clusters": {
+      "enabled": false,
+      "frequency": {
+        "count": 1,
+        "resolution": "MONTH"
+      },
+      "phraseThreshold": {
+        "count": 100
+      },
+      "retention": {
+        "count": 30,
+        "resolution": "DAY"
+      }
+    }
+  }
+}

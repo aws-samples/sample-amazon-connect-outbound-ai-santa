@@ -8,5 +8,5 @@ export const preSignUp = defineFunction({
   entry: './handler.ts',
   runtime: 24,
   resourceGroupName: 'auth',
-  environment: { SIGNUP_ALLOWLIST: config.signupAllowlist, SANTA_LANGUAGE: config.language },
+  environment: { SIGNUP_ALLOWLIST: config.signupAllowlist },
 });

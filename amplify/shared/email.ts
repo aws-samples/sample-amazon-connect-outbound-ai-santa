@@ -1,8 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
-import { LOGO_PNG_BASE64_EN, LOGO_PNG_BASE64_ES } from './email-logo.js';
-import { language, msg } from './i18n.js';
+import { LOGO_PNG_BASE64 } from './email-logo.js';
+import { msg } from './i18n.js';
 
 export const ses = new SESv2Client({});
 
@@ -65,9 +65,9 @@ const SANTA = '\u{1F385}\u{1F3FB}';
 // remote image is loaded. The alt text keeps the title readable when images are blocked.
 export const LOGO_CID = 'santa-logo';
 
-/** Inline logo for the email language, with its display width at 62 px high. */
+/** Inline logo, with its display width at 62 px high. */
 function logoImage(): { base64: string; width: number } {
-  return language() === 'es' ? { base64: LOGO_PNG_BASE64_ES, width: 320 } : { base64: LOGO_PNG_BASE64_EN, width: 244 };
+  return { base64: LOGO_PNG_BASE64, width: 244 };
 }
 
 /**
@@ -82,7 +82,7 @@ function layout(preheader: string, cardHtml: string, opts: { logo?: 'inline' | '
     opts.logo === 'text'
       ? `<div style="font-family:${FONT_LOGO};font-weight:700;font-size:40px;line-height:1.15;color:${C.red}">${name}</div>`
       : `<img src="cid:${LOGO_CID}" width="${width}" height="62" alt="${name}" style="display:block;margin:0 auto;border:0;outline:none;width:${width}px;max-width:100%;height:auto;font-family:${FONT_LOGO};font-weight:700;font-size:36px;color:${C.red}">`;
-  return `<!doctype html><html lang="${language()}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${name}</title></head>
 <body style="margin:0;padding:0;background:${C.beige};font-family:${FONT_BODY};color:${C.ink}">
 <div style="display:none;max-height:0;overflow:hidden;opacity:0">${escapeHtml(preheader)}</div>
@@ -229,7 +229,7 @@ export async function sendEmail(to: string, content: EmailContent): Promise<void
           Attachments: [
             {
               RawContent: logo,
-              FileName: language() === 'es' ? 'llamada-de-santa.png' : 'santas-call.png',
+              FileName: 'santas-call.png',
               ContentType: 'image/png',
               ContentDisposition: 'INLINE',
               ContentId: LOGO_CID,

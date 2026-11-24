@@ -2,24 +2,22 @@
 // SPDX-License-Identifier: MIT-0
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { cognitoCodeEmail, cognitoInviteEmail, missedCallEmail, wishlistEmail } from './email.js';
-import { language, msg, zoneCity } from './i18n.js';
+import { msg, zoneCity } from './i18n.js';
 import { localDate, localTime, validateCallTime, wallTimeToUtc } from './time.js';
 import { isMobileAllowed, validateChildName } from './validation.js';
 
 const saved = { ...process.env };
 const rules = { windowStart: '09:00', windowEnd: '22:00', minLeadMinutes: 5 };
 
-describe('English deployment in the US (the defaults)', () => {
+describe('US deployment (the defaults)', () => {
   beforeEach(() => {
-    delete process.env.SANTA_LANGUAGE;
     delete process.env.CALL_TIMEZONE;
   });
   afterEach(() => {
     process.env = { ...saved };
   });
 
-  it('defaults to English and New York time', () => {
-    expect(language()).toBe('en');
+  it('defaults to New York time', () => {
     expect(msg().noNotes).toBe('No notes.');
     expect(zoneCity('America/New_York')).toBe('New York');
   });
@@ -65,21 +63,15 @@ describe('English deployment in the US (the defaults)', () => {
   });
 });
 
-describe('Spanish deployment', () => {
+describe('Deployment in another time zone', () => {
   beforeEach(() => {
-    process.env.SANTA_LANGUAGE = 'es';
     process.env.CALL_TIMEZONE = 'Europe/Madrid';
   });
   afterEach(() => {
     process.env = { ...saved };
   });
-
-  it('keeps the Spanish texts and Madrid time', () => {
-    expect(msg().noNotes).toBe('Sin notas.');
-    const letter = wishlistEmail('Lucía', [], []);
-    expect(letter.subject).toBe('🎁 La carta de Lucía para Santa');
-    expect(letter.html).toContain('<html lang="es">');
+  it('names the call zone city in English messages', () => {
     const res = validateCallTime('2026-12-24', '23:00', rules, new Date('2026-12-20T12:00:00Z'));
-    expect(res).toEqual({ ok: false, error: 'Santa solo llama entre las 09:00 y las 22:00 (hora de Madrid).' });
+    expect(res).toEqual({ ok: false, error: 'Santa only calls between 09:00 and 22:00 (Madrid time).' });
   });
 });

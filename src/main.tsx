@@ -22,10 +22,6 @@ Amplify.configure(outputs);
 I18n.putVocabularies(translations);
 I18n.setLanguage(t.htmlLang);
 
-// index.html ships in English; switch the page language, title and description to the configured language.
-document.documentElement.lang = t.htmlLang;
-document.title = t.appTitle;
-document.querySelector('meta[name="description"]')?.setAttribute('content', t.metaDescription);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

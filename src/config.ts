@@ -2,12 +2,10 @@
 // SPDX-License-Identifier: MIT-0
 import outputs from '../amplify_outputs.json';
 
-export type Language = 'en' | 'es';
 
 interface CustomOutputs {
   requirePhoneVerification?: boolean;
   santaCallerNumber?: string;
-  language?: string;
   callTimezone?: string;
   allowedPhonePrefixes?: unknown;
 }
@@ -20,8 +18,6 @@ export const phoneVerificationRequired = custom?.requirePhoneVerification !== fa
 /** Number Santa calls from (CONNECT_SOURCE_PHONE_NUMBER), E.164. Empty until the backend is redeployed. */
 export const santaCallerNumber = custom?.santaCallerNumber ?? '';
 
-/** Language of everything parents see (SANTA_LANGUAGE). English unless the backend says Spanish. */
-export const language: Language = custom?.language === 'es' ? 'es' : 'en';
 
 function validTimeZone(zone: unknown): zone is string {
   if (typeof zone !== 'string' || !zone) return false;

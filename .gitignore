@@ -33,3 +33,10 @@ amplifyconfiguration*
 __pycache__/
 *.pyc
 cdk.out/
+
+# Filled contact flow (npm run connect:flow)
+santa-flow.json
+.env.bak
+
+# Local Kiro agent skills (third-party, only used while developing)
+.kiro/skills/

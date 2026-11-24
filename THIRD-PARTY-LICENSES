@@ -2,7 +2,7 @@ This sample includes or uses the following third-party material.
 
 ** Mountains of Christmas font (Google Fonts) - Apache License 2.0
    https://fonts.google.com/specimen/Mountains+of+Christmas
-   amplify/shared/email-logo.ts contains a PNG of the title "Llamada de Santa" rendered with this
+   amplify/shared/email-logo.ts contains a PNG of the title "Santa's Call" rendered with this
    font by scripts/email-logo.sh. The font itself is not included in this repository; the web app
    installs it from npm (@fontsource/mountains-of-christmas, Apache-2.0).
    License text: https://www.apache.org/licenses/LICENSE-2.0
@@ -15,5 +15,8 @@ and are installed by `npm install` under their own licences:
    License text: https://openfontlicense.org/open-font-license-official-text/
 ** @aws-amplify/ui-react, aws-amplify - Apache License 2.0
 ** react, react-dom - MIT License
+The setup scripts use this npm package to create the Santa agent in Agentic CX designer. It is a
+development dependency, installed by `npm install` and not bundled into the web app:
+** amazon-connect-acxd-sdk - Apache License 2.0
 
 All illustrations in src/components/illustrations/ are original SVG drawn for this sample.

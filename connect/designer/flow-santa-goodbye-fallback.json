@@ -1,0 +1,103 @@
+{
+  "flowId": "SantaGoodbyeFallback",
+  "description": "Fallback and unknown: a short Santa goodbye and back to Connect with outcome Error.",
+  "mainLanguageCode": "en-US",
+  "languageCodes": [
+    "en-US"
+  ],
+  "slotTypes": [],
+  "contextVariables": [
+    {
+      "name": "childName",
+      "type": "text"
+    },
+    {
+      "name": "outcome",
+      "type": "text"
+    }
+  ],
+  "metadata": {
+    "path": "/santa",
+    "tags": [
+      "santa"
+    ]
+  },
+  "nodes": {
+    "05863b69-6f53-4019-bc2d-608a09119dd4": {
+      "nodeId": "05863b69-6f53-4019-bc2d-608a09119dd4",
+      "type": "terminate",
+      "messages": [],
+      "canvasMetadata": {
+        "x": 0,
+        "y": 550,
+        "width": 240,
+        "height": 80,
+        "isMinimized": false
+      },
+      "metadata": {
+        "name": "Exit",
+        "stateModifications": [],
+        "async": false
+      }
+    },
+    "1161f3f0-bf0d-436f-b419-57151ff9d67d": {
+      "nodeId": "1161f3f0-bf0d-436f-b419-57151ff9d67d",
+      "type": "start",
+      "childNodes": [
+        {
+          "nodeId": "5dd458f6-6d05-45f5-bb6c-746742612649",
+          "name": "",
+          "conditions": []
+        }
+      ],
+      "messages": [],
+      "canvasMetadata": {
+        "x": 0,
+        "y": 0,
+        "width": 240,
+        "height": 198,
+        "isMinimized": false
+      }
+    },
+    "5dd458f6-6d05-45f5-bb6c-746742612649": {
+      "nodeId": "5dd458f6-6d05-45f5-bb6c-746742612649",
+      "type": "basic",
+      "childNodes": [
+        {
+          "nodeId": "05863b69-6f53-4019-bc2d-608a09119dd4",
+          "name": "",
+          "conditions": []
+        }
+      ],
+      "messages": [
+        {
+          "type": "text",
+          "body": "Ho, ho, ho! My beard got tangled up in the phone. Merry Christmas!",
+          "skipTranslation": false
+        }
+      ],
+      "canvasMetadata": {
+        "x": 0,
+        "y": 300,
+        "width": 240,
+        "height": 140,
+        "isMinimized": false
+      },
+      "metadata": {
+        "name": "Emergency goodbye",
+        "stateModifications": [
+          {
+            "type": "context",
+            "name": "outcome",
+            "modification": "set",
+            "value": {
+              "type": "constant",
+              "value": "Error"
+            }
+          }
+        ],
+        "async": false
+      }
+    }
+  }
+}

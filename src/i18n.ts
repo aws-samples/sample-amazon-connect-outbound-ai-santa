@@ -1,20 +1,18 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
 /**
- * Every string a parent sees, in English (US) and Spanish (Spain). The backend's SANTA_LANGUAGE setting
- * reaches the app as `custom.language` in amplify_outputs.json and picks the dictionary.
+ * Every string a parent sees, in US English.
  *
  * Text that wraps a highlighted value is a `[before, after]` pair, so components can put the value in `<strong>`.
  */
-import { language, type Language } from './config.ts';
 
 type Wrap = readonly [before: string, after: string];
 
 export interface Strings {
   /** Language code for `<html lang>` and the Amplify UI vocabulary. */
-  htmlLang: Language;
+  htmlLang: 'en';
   /** BCP 47 locale for Intl formats. */
-  locale: 'en-US' | 'es-ES';
+  locale: 'en-US';
   /** First day of the week in the date picker: 0 Sunday, 1 Monday. */
   weekStartsOn: 0 | 1;
 
@@ -293,165 +291,8 @@ const en: Strings = {
   signReindeer: 'Reindeer',
 };
 
-const es: Strings = {
-  htmlLang: 'es',
-  locale: 'es-ES',
-  weekStartsOn: 1,
-
-  appTitle: 'Llamada de Santa',
-  metaDescription: 'Santa llama por teléfono a tu peque y te envía su carta de deseos por email.',
-  howItWorks: 'Cómo funciona',
-  flow: [
-    { title: 'Verifica tu móvil', sub: 'Te llega un código por SMS' },
-    { title: 'Elige día y hora', sub: 'Y cuéntale a Santa algo de tu peque' },
-    { title: 'Santa llama', sub: 'Charla con tu peque en español' },
-    { title: 'Recibe la carta', sub: 'Con sus deseos, en tu email' },
-  ],
-  authHello: '¡Hola, familia!',
-  authSub: 'Entra con tu cuenta para avisar a Santa',
-  footer: 'Demo con Amazon Connect · Santa no graba las llamadas',
-
-  errCodeMismatch: 'Ese código no es el bueno. Mira el SMS otra vez y vuelve a escribirlo.',
-  errExpiredCode: 'El código ha caducado. Pide uno nuevo.',
-  errTooManyAttempts: 'Demasiados intentos. Espera unos minutos y vuelve a probar.',
-  errAliasExists: 'Ese móvil ya está en otra cuenta. Usa otro número.',
-  errCodeDelivery: 'No hemos podido enviar el SMS. Comprueba el número o prueba más tarde.',
-  errSessionExpired: 'Tu sesión ha caducado. Sal y vuelve a entrar.',
-  errNetwork: 'No hay conexión con el Polo Norte. Revisa tu internet y vuelve a probar.',
-  errGeneric: 'Un elfo se ha liado con los cables. Vuelve a probar en un momento.',
-  phoneInvalid: (prefix) =>
-    prefix === '+34'
-      ? 'Escribe un móvil español de 9 cifras que empiece por 6 o 7.'
-      : prefix === '+1'
-        ? 'Escribe un móvil de EE. UU. o Canadá de 10 cifras.'
-        : 'Escribe un número de móvil válido.',
-  phoneRejected: (prefix) =>
-    prefix === '+34'
-      ? 'Revisa el número: debe ser un móvil español de 9 cifras.'
-      : prefix === '+1'
-        ? 'Revisa el número: debe ser un móvil de EE. UU. o Canadá de 10 cifras.'
-        : 'Revisa el número: debe ser un móvil válido.',
-
-  countdownToday: '¡Es hoy!',
-  countdownTomorrow: '¡Es mañana!',
-  countdownDays: (days) => `Faltan ${days} días`,
-  callWhen: (date, time) => `${date} a las ${time}`,
-
-  pickDayDialog: 'Elige el día de la llamada',
-  prevMonth: 'Mes anterior',
-  nextMonth: 'Mes siguiente',
-
-  verifyTitle: 'Primero, verifica tu móvil',
-  verifyTitleCode: 'Escribe el código',
-  verifyIntro: 'Santa solo llama a números verificados. Te enviaremos un código por SMS.',
-  verifySentTo: ['Te lo hemos enviado por SMS al ', '.'],
-  phoneLabel: 'Móvil al que llamará Santa',
-  countryCode: 'Prefijo',
-  sending: 'Enviando…',
-  sendCode: 'Enviar código SMS',
-  skipStep: 'Saltar este paso',
-  codeLabel: 'Código de 6 cifras',
-  checking: 'Comprobando…',
-  verify: 'Verificar',
-  resendCode: 'Reenviar código',
-  changeNumber: 'Cambiar número',
-  newCodeSent: 'Te hemos enviado un código nuevo.',
-
-  celebrationTitle: (childName) => `¡Santa ya ha apuntado a ${childName} en su lista!`,
-  celebrationWhen: (when) => `Llamará el ${when}.`,
-  scheduleAnother: 'Agendar otra llamada',
-  tipsTitle: 'Cómo preparar a tu peque',
-  tipCaller: ['Santa llamará desde el ', '. Guárdalo en la agenda como «Santa» para que salga su nombre cuando suene.'],
-  tipUnknownCaller: 'Santa llamará desde un número que no tienes en la agenda. ¡Cógelo!',
-  tips: [
-    'Pon el altavoz para escucharlo juntos.',
-    'Deja que hable tu peque: Santa le preguntará qué quiere pedir.',
-    'Si nadie contesta, Santa lo volverá a intentar un poco más tarde.',
-    'Al colgar, recibirás su carta de deseos por email.',
-  ],
-  formTitle: 'Pide la llamada de Santa',
-  childNameLabel: 'Nombre del peque',
-  childNamePlaceholder: 'Por ejemplo, Lucía…',
-  notesLabel: 'Cosas que Santa sabe',
-  notesCount: (length, max) => `(opcional, ${length}/${max})`,
-  notesPlaceholder: 'Le encantan los dinosaurios y este año ha aprendido a montar en bici…',
-  notesHint: 'Santa lo usará en la conversación. No incluyas apellidos, dirección ni colegio.',
-  dayLabel: 'Día',
-  timeLabel: (city) => `Hora (${city})`,
-  seasonOver: 'Santa ya ha hecho todas sus llamadas de este año. ¡Vuelve en diciembre!',
-  callWindowHint: (start, end) => `Santa llama hasta el 24 de diciembre, entre las ${start} y las ${end}.`,
-  santaWillCall: ['Santa llamará a ', ''],
-  letterGoesTo: ['La carta llegará a ', ''],
-  notifyingElves: 'Avisando a los elfos…',
-  submit: '¡Que llame Santa!',
-  quickTest: 'Prueba: llamar en 1 minuto',
-
-  status: {
-    CALLING: 'Santa está marcando…',
-    IN_CALL: '¡Hablando con Santa!',
-    NO_RESPONSE: 'Santa lo volverá a intentar',
-    DELIVERED: 'La carta va volando a tu email',
-    UNKNOWN: 'Los elfos están en ello',
-  },
-  emptyTitle: 'Todavía no has avisado a Santa.',
-  emptySub: 'Rellena la carta y el reno le llevará el recado.',
-  hideCalls: 'Ocultar llamadas agendadas',
-  showCalls: 'Ver llamadas agendadas',
-  callsCount: (count) => `${count} ${count === 1 ? 'llamada' : 'llamadas'}`,
-  cancelCallOf: (childName) => `Cancelar la llamada de ${childName}`,
-  cancelCallOfQuestion: (childName) => `¿Cancelar la llamada de ${childName}?`,
-  cancelQuestion: '¿Cancelar?',
-  cancelling: 'Cancelando…',
-  confirmCancel: 'Sí, cancelar',
-  no: 'No',
-  cancel: 'Cancelar',
-
-  loadingHome: 'Los elfos están preparando todo…',
-  back: 'Volver',
-  workshop: 'Taller',
-  signOut: 'Salir',
-  retry: 'Volver a intentarlo',
-
-  workshopLoading: 'Contando cartas en el taller…',
-  workshopTitle: 'El taller de Santa',
-  tiles: {
-    scheduled: 'Llamadas agendadas',
-    dialled: 'Llamadas hechas',
-    answered: 'Niños que hablaron con Santa',
-    lettersSent: 'Cartas repartidas',
-    wishes: 'Deseos apuntados',
-    giftLinks: 'Enlaces de regalo enviados',
-  },
-  small: { missed: 'sin respuesta', cutShort: 'colgadas antes de la carta', cancelled: 'canceladas' },
-  pendingSuffix: ' llamadas esperando su hora',
-  liveSuffix: ' en curso ahora',
-  avgCall: 'Duración media de la llamada',
-  answerRate: 'Tasa de respuesta',
-  wishesPerLetter: 'Deseos por carta',
-  percent: (n) => `${n} %`,
-  funTitle: 'Datos del Polo Norte',
-  funTag: 'de cuento',
-  // Madrid to the North Pole, roughly: 49.6 degrees of latitude at 111 km each.
-  sleighPerLetter: 5500,
-  sleighSuffix: ' km de trineo',
-  cookiesSuffix: ' galletas para los renos',
-  elvesSuffix: ' elfos trabajando',
-  funNote: 'Calculados a partir de las cartas y los deseos: una galleta por deseo, un elfo cada tres.',
-  last7Days: 'Últimos 7 días',
-  daysChartLabel: 'Llamadas hechas y cartas por día',
-  dayChartText: (calls, letters) => `${calls} llamadas, ${letters} cartas`,
-  legendCalls: 'llamadas hechas',
-  legendLetters: 'cartas repartidas',
-
-  signNorthPole: 'POLO NORTE',
-  signWorkshop: 'Taller',
-  signReindeer: 'Renos',
-};
-
-export const dictionaries: Record<Language, Strings> = { en, es };
-
-/** The active dictionary. */
-export const t: Strings = dictionaries[language];
+/** The app's strings. */
+export const t: Strings = en;
 
 /** The active locale for Intl formats. */
 export const locale = t.locale;

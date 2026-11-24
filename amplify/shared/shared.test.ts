@@ -39,7 +39,7 @@ describe('validateCallTime', () => {
     expect(validateCallTime('2026-12-20', '10:03', rules, now).ok).toBe(false);
   });
   it('rejects dates after 24 December', () => {
-    expect(validateCallTime('2026-12-25', '18:00', rules, now)).toEqual({ ok: false, error: 'Santa solo llama hasta el 24 de diciembre.' });
+    expect(validateCallTime('2026-12-25', '18:00', rules, now)).toEqual({ ok: false, error: 'Santa only calls until December 24.' });
   });
   it('accepts days well before 24 December', () => {
     expect(validateCallTime('2026-12-01', '18:00', rules, new Date('2026-10-15T09:00:00Z')).ok).toBe(true);
@@ -68,7 +68,7 @@ describe('validation', () => {
     expect(validateNotes('a'.repeat(301)).ok).toBe(false);
   });
   it('strips brackets and control characters from free text', () => {
-    expect(sanitizeFreeText('hola <b>{x}</b>\u0007 adiós', 100)).toBe('hola b x /b adiós');
+    expect(sanitizeFreeText('hello <b>{x}</b>\u0007 bye', 100)).toBe('hello b x /b bye');
   });
   it('only allows configured phone prefixes', () => {
     expect(isPhoneAllowed('+34600123456', '+34')).toBe(true);
@@ -84,47 +84,47 @@ describe('validation', () => {
 
 describe('email', () => {
   it('escapes HTML in child-provided content', () => {
-    const mail = wishlistEmail('Ana', ['Hola'], ['<img src=x onerror=alert(1)>']);
+    const mail = wishlistEmail('Ana', ['Hello'], ['<img src=x onerror=alert(1)>']);
     expect(mail.html).not.toContain('<img src=x');
     expect(mail.html).toContain(escapeHtml('<img src=x onerror=alert(1)>'));
   });
 
   it('addresses the parents and numbers the wishes', () => {
-    const mail = wishlistEmail('Ana', ['Hola'], ['Una bici', 'Un libro']);
-    expect(mail.text).toMatch(/^Hola, familia de Ana:/);
-    expect(mail.html).toContain('Hola, familia de Ana:');
-    expect(mail.text).toContain('1. Una bici');
-    expect(mail.text).toContain('2. Un libro');
+    const mail = wishlistEmail('Ana', ['Hello'], ['A bike', 'A book']);
+    expect(mail.text).toMatch(/^Hello, Ana's family,/);
+    expect(mail.html).toContain('Hello, Ana&#39;s family,');
+    expect(mail.text).toContain('1. A bike');
+    expect(mail.text).toContain('2. A book');
   });
 
   it('shows the title as an inline image and Santa with light skin', () => {
-    const mail = wishlistEmail('Ana', ['Hola'], []);
+    const mail = wishlistEmail('Ana', ['Hello'], []);
     expect(mail.html).toContain(`src="cid:${LOGO_CID}"`);
-    expect(mail.html).toContain('alt="Llamada de Santa"');
+    expect(mail.html).toContain('alt="Santa&#39;s Call"');
     expect(mail.html).toContain('\u{1F385}\u{1F3FB}');
   });
 
   it('links each wish to an Amazon search, without a tag by default', () => {
-    const mail = wishlistEmail('Ana', ['Hola'], ['Una bici roja', 'Lego & más'], { domain: 'amazon.es' });
-    expect(mail.html).toContain('https://www.amazon.es/s?k=Una+bici+roja');
-    expect(mail.html).toContain('k=Lego+%26+m%C3%A1s');
-    expect(mail.html).toContain('Ver ideas en Amazon');
-    expect(mail.text).toContain('https://www.amazon.es/s?k=Una+bici+roja');
+    const mail = wishlistEmail('Ana', ['Hello'], ['A red bike', 'Lego & more'], { domain: 'amazon.es' });
+    expect(mail.html).toContain('https://www.amazon.es/s?k=A+red+bike');
+    expect(mail.html).toContain('k=Lego+%26+more');
+    expect(mail.html).toContain('See ideas on Amazon');
+    expect(mail.text).toContain('https://www.amazon.es/s?k=A+red+bike');
     expect(mail.html).not.toContain('tag=');
-    expect(mail.html).not.toContain('afiliado');
+    expect(mail.html).not.toContain('affiliate');
   });
 
   it('adds the associate tag and says the links are affiliate links', () => {
-    const mail = wishlistEmail('Ana', ['Hola'], ['Una bici'], { domain: 'amazon.es', tag: 'santa-21' });
+    const mail = wishlistEmail('Ana', ['Hello'], ['A bike'], { domain: 'amazon.es', tag: 'santa-21' });
     expect(mail.html).toContain('tag=santa-21');
-    expect(mail.html).toContain('enlaces de afiliado');
-    expect(mail.text).toContain('enlaces de afiliado');
+    expect(mail.html).toContain('affiliate links');
+    expect(mail.text).toContain('affiliate links');
   });
 
   it('escapes wish text inside the link', () => {
     const url = giftSearchUrl('"><script>x</script>', { domain: 'amazon.es' });
     expect(url).not.toContain('<');
-    const mail = wishlistEmail('Ana', ['Hola'], ['"><script>x</script>'], { domain: 'amazon.es' });
+    const mail = wishlistEmail('Ana', ['Hello'], ['"><script>x</script>'], { domain: 'amazon.es' });
     expect(mail.html).not.toContain('<script>');
   });
 
@@ -133,16 +133,16 @@ describe('email', () => {
     expect(giftLinksFromEnv({ GIFT_LINKS_DOMAIN: 'evil.com' })).toBeUndefined();
     expect(giftLinksFromEnv({ GIFT_LINKS_DOMAIN: 'amazon.es', AMAZON_ASSOCIATE_TAG: 'bad tag&x=1' })).toEqual({ domain: 'amazon.es', tag: undefined });
     expect(giftLinksFromEnv({ GIFT_LINKS_DOMAIN: 'amazon.co.uk', AMAZON_ASSOCIATE_TAG: 'santa-21' })).toEqual({ domain: 'amazon.co.uk', tag: 'santa-21' });
-    const mail = wishlistEmail('Ana', ['Hola'], [], { domain: 'amazon.es' });
+    const mail = wishlistEmail('Ana', ['Hello'], [], { domain: 'amazon.es' });
     expect(mail.html).not.toContain('amazon.es/s');
-    expect(mail.html).not.toContain('Los elfos han buscado');
+    expect(mail.html).not.toContain('The elves found ideas');
   });
 
   it('sends the title image as an inline attachment', async () => {
     const mock = mockClient(ses);
     mock.on(SendEmailCommand).resolves({});
     process.env.SENDER_EMAIL = 'santa@example.com';
-    await sendEmail('padres@example.com', wishlistEmail('Ana', ['Hola'], []));
+    await sendEmail('parents@example.com', wishlistEmail('Ana', ['Hello'], []));
     const att = mock.commandCalls(SendEmailCommand)[0].args[0].input.Content?.Simple?.Attachments?.[0];
     expect(att).toMatchObject({ ContentDisposition: 'INLINE', ContentId: LOGO_CID, ContentType: 'image/png' });
     expect(Buffer.from(att!.RawContent!).subarray(1, 4).toString()).toBe('PNG');

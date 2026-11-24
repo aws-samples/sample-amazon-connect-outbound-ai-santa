@@ -60,7 +60,7 @@ describe('readWorkshopStats', () => {
 describe('workshopStats', () => {
   it('is only for the ADMINS group', async () => {
     const parent = { sub: 'u', username: 'u', groups: null } as unknown as AppSyncIdentityCognito;
-    await expect(workshopStats(parent)).rejects.toThrow(/administradores/);
+    await expect(workshopStats(parent)).rejects.toThrow(/admin elves/);
   });
 });
 

@@ -1,22 +1,18 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: MIT-0
-import { ConnectClient, DescribeContactCommand } from '@aws-sdk/client-connect';
 import { InvokeCommand, LambdaClient } from '@aws-sdk/client-lambda';
-import { QConnectClient, UpdateSessionDataCommand } from '@aws-sdk/client-qconnect';
 import type { ConnectContactFlowEvent, ConnectContactFlowResult } from 'aws-lambda';
 import { getBooking, setStatus } from '../../shared/bookings.js';
 import { msg } from '../../shared/i18n.js';
 import { bumpStats, talkStats } from '../../shared/stats.js';
-import { sanitizeFreeText } from '../../shared/validation.js';
+import { CHILD_NAME_MAX, NOTES_MAX, sanitizeFreeText } from '../../shared/validation.js';
 
-const connect = new ConnectClient({});
-const qconnect = new QConnectClient({});
 const lambda = new LambdaClient({});
 
 export const MAX_WISHES = 15;
 export const WISH_MAX = 80;
 
-/** The AI agent passes the wishlist as a string. Accept a JSON array or a comma, semicolon or newline separated list. */
+/** The Santa agent passes the wishlist as a string. Accept a JSON array or a comma, semicolon or newline separated list. */
 export function parseWishes(raw: string | undefined): string[] {
   if (!raw) return [];
   let items: unknown[] = [];
@@ -32,39 +28,22 @@ export function parseWishes(raw: string | undefined): string[] {
     .slice(0, MAX_WISHES);
 }
 
-/** Session ARN format: arn:aws:wisdom:<region>:<account>:session/<assistantId>/<sessionId> */
-export function parseSessionArn(arn: string): { assistantId: string; sessionId: string } | undefined {
-  const m = /:session\/([^/]+)\/([^/]+)$/.exec(arn);
-  return m ? { assistantId: m[1], sessionId: m[2] } : undefined;
-}
-
-async function start(bookingId: string, contactId: string, instanceArn: string): Promise<ConnectContactFlowResult> {
+/**
+ * The child's name and notes go back to the flow as Lambda output ($.External), and the Agentic CX block
+ * passes them to the Santa agent as context variables. They are never set as contact attributes, so they
+ * are not kept in the contact record, and the flow has logging disabled.
+ */
+async function start(bookingId: string, contactId: string): Promise<ConnectContactFlowResult> {
   const booking = await getBooking(bookingId);
   if (!booking || booking.contactId !== contactId) return { result: 'unknown' };
   await setStatus(bookingId, 'IN_CALL', { answeredAt: new Date().toISOString() });
   await bumpStats({ answered: 1 });
-
-  const instanceId = instanceArn.split('/').pop();
-  const contact = await connect.send(new DescribeContactCommand({ InstanceId: instanceId, ContactId: contactId }));
-  const session = parseSessionArn(contact.Contact?.WisdomInfo?.SessionArn ?? '');
-  if (!session) {
-    console.error('no AI agent session on contact; is the Connect assistant block before this Lambda?', { bookingId });
-    return { result: 'error' };
-  }
-  // Child context goes to the AI agent session, not to contact attributes, so it is not kept in the contact record.
-  await qconnect.send(
-    new UpdateSessionDataCommand({
-      assistantId: process.env.QCONNECT_ASSISTANT_ID || session.assistantId,
-      sessionId: session.sessionId,
-      data: [
-        { key: 'childName', value: { stringValue: booking.childName } },
-        { key: 'childNotes', value: { stringValue: booking.notes || msg().noNotes } },
-      ],
-    }),
-  );
-  return { result: 'ok' };
+  return {
+    result: 'ok',
+    childName: sanitizeFreeText(booking.childName, CHILD_NAME_MAX),
+    childNotes: sanitizeFreeText(booking.notes, NOTES_MAX) || msg().noNotes,
+  };
 }
-
 async function noResponse(bookingId: string, contactId: string): Promise<ConnectContactFlowResult> {
   const booking = await getBooking(bookingId);
   if (!booking || booking.contactId !== contactId) return { result: 'unknown' };
@@ -100,7 +79,7 @@ export const handler = async (event: ConnectContactFlowEvent): Promise<ConnectCo
   try {
     switch (params.action) {
       case 'start':
-        return await start(bookingId, contact.ContactId, contact.InstanceARN);
+        return await start(bookingId, contact.ContactId);
       case 'noResponse':
         return await noResponse(bookingId, contact.ContactId);
       case 'deliver':

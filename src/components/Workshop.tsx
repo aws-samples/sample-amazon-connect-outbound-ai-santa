@@ -46,7 +46,7 @@ export function derived(c: Counts) {
   };
 }
 const dayLabel = (day: string) =>
-  // Short weekday and day, e.g. "mié 18" or "Wed 18".
+  // Short weekday and day, e.g. "Wed 18".
   new Intl.DateTimeFormat(locale, { weekday: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T12:00:00Z`));
 
 /** Admin-only view with aggregate numbers. It never shows names, notes or wishes. */

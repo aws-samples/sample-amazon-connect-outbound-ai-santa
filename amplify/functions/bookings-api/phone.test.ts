@@ -43,19 +43,19 @@ describe('sendPhoneCode', () => {
 
   it('rejects numbers that are not Spanish mobiles without sending anything', async () => {
     for (const phone of ['+34900123456', '+447700900123', '600123456', '']) {
-      await expect(sendPhoneCode(identity, phone)).rejects.toThrow(/móvil español/);
+      await expect(sendPhoneCode(identity, phone)).rejects.toThrow(/allowed countries/);
     }
     expect(eum.commandCalls(SendNotifyCodeVerificationCommand)).toHaveLength(0);
   });
 
   it('turns throttling into a message for the parent', async () => {
     eum.on(SendNotifyCodeVerificationCommand).rejects(Object.assign(new Error('slow down'), { name: 'ThrottlingException' }));
-    await expect(sendPhoneCode(identity, '+34600123456')).rejects.toThrow(/demasiados códigos/);
+    await expect(sendPhoneCode(identity, '+34600123456')).rejects.toThrow(/too many codes/);
   });
 
   it('stops at the per-user hourly limit without asking Notify', async () => {
     ddb.on(UpdateCommand).rejects(new ConditionalCheckFailedException({ message: 'limit', $metadata: {} }));
-    await expect(sendPhoneCode(identity, '+34600123456')).rejects.toThrow(/demasiados códigos/);
+    await expect(sendPhoneCode(identity, '+34600123456')).rejects.toThrow(/too many codes/);
     expect(eum.commandCalls(SendNotifyCodeVerificationCommand)).toHaveLength(0);
   });
 });
@@ -82,12 +82,12 @@ describe('verifyPhoneCode', () => {
 
   it('does not touch the account when the code is invalid', async () => {
     eum.on(ValidateNotifyCodeVerificationCommand).resolves({ status: 'INVALID' });
-    await expect(verifyPhoneCode(identity, '+34600123456', '123456')).rejects.toThrow(/no es correcto/);
+    await expect(verifyPhoneCode(identity, '+34600123456', '123456')).rejects.toThrow(/wrong or has expired/);
     expect(cognito.commandCalls(AdminUpdateUserAttributesCommand)).toHaveLength(0);
   });
 
   it('rejects malformed codes without calling Notify', async () => {
-    await expect(verifyPhoneCode(identity, '+34600123456', '12ab')).rejects.toThrow(/6 cifras/);
+    await expect(verifyPhoneCode(identity, '+34600123456', '12ab')).rejects.toThrow(/6 digits/);
     expect(eum.commandCalls(ValidateNotifyCodeVerificationCommand)).toHaveLength(0);
   });
 });
@@ -97,6 +97,6 @@ describe('handler', () => {
     eum.on(ValidateNotifyCodeVerificationCommand).resolves({ status: 'INVALID' });
     const event = (fieldName: string, args: Record<string, string>) => ({ typeName: 'Mutation', fieldName, arguments: args, identity });
     await expect(handler(event('sendPhoneCode', { phoneNumber: '+34600123456' }))).resolves.toBe(true);
-    await expect(handler(event('verifyPhoneCode', { phoneNumber: '+34600123456', code: '000000' }))).rejects.toThrow(/no es correcto/);
+    await expect(handler(event('verifyPhoneCode', { phoneNumber: '+34600123456', code: '000000' }))).rejects.toThrow(/wrong or has expired/);
   });
 });

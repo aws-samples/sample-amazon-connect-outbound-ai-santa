@@ -8,7 +8,6 @@ import { preSignUp } from './pre-sign-up/resource.js';
 export const auth = defineAuth({
   loginWith: {
     email: {
-      // Synth time: the language comes from SANTA_LANGUAGE in .env.
       verificationEmailSubject: msg().codeSubject,
       // Same design as the letter to the parents.
       verificationEmailBody: (code: () => string) => cognitoCodeEmail(code()),

@@ -3,12 +3,25 @@
 # SPDX-License-Identifier: MIT-0
 # Copies ELEVENLABS_API_KEY from .env.local into the Secrets Manager secret that Amazon Connect
 # reads for the ElevenLabs voice. The key never appears on a command line or in the output.
-# Usage: AWS_PROFILE=<profile> npm run elevenlabs:secret
+# Usage: AWS_PROFILE=<profile> npm run elevenlabs:secret   (Region: AWS_REGION, else the one in .env)
 set -euo pipefail
 
 SECRET_ID="santa-call-center/elevenlabs-api-key"
-REGION="${AWS_REGION:-eu-central-1}"
 
+# The secret lives in the Region of the stack: AWS_REGION from the environment, else from .env.
+if [ -z "${AWS_REGION:-}" ] && [ -f .env ]; then
+  AWS_REGION="$(sed -n 's/^AWS_REGION=//p' .env | tail -n 1)"
+fi
+if [ -z "${AWS_REGION:-}" ]; then
+  echo "Set AWS_REGION (environment or .env) to the Region of your deployment." >&2
+  exit 1
+fi
+REGION="$AWS_REGION"
+
+if [ ! -f .env.local ]; then
+  echo "No .env.local: put ELEVENLABS_API_KEY=<key> in .env.local first." >&2
+  exit 1
+fi
 set -a
 # shellcheck disable=SC1091
 . ./.env.local

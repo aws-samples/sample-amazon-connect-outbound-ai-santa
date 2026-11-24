@@ -680,7 +680,7 @@ input[aria-invalid='true'] { border-color: var(--red); }
 .auth-card { min-width: 0; width: 100%; padding: 8px; }
 .auth-card [data-amplify-container],
 .auth-card [data-amplify-router] { width: 100%; max-width: 100%; min-width: 0; }
-/* Same height for "Iniciar sesión" and "Crear cuenta" so switching tabs doesn't make the page jump.
+/* Same height for "Sign In" and "Create Account" so switching tabs doesn't make the page jump.
    432px is the measured height of the sign-up form, the taller of the two. */
 .auth-card [data-amplify-router] { border-radius: var(--radius); overflow: hidden; min-height: 432px; }
 /* Active tab: candy-cane stripe instead of Amplify's plain top border. */

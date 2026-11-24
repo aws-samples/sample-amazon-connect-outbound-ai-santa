@@ -8,7 +8,7 @@ import type { CfnUserPool } from 'aws-cdk-lib/aws-cognito';
 import { AttributeType, BillingMode, ProjectionType, Table, TableEncryption } from 'aws-cdk-lib/aws-dynamodb';
 import { Rule } from 'aws-cdk-lib/aws-events';
 import { LambdaFunction } from 'aws-cdk-lib/aws-events-targets';
-import { Effect, PolicyDocument, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Key } from 'aws-cdk-lib/aws-kms';
 import type { IFunction } from 'aws-cdk-lib/aws-lambda';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
@@ -76,25 +76,15 @@ const statsTable = new Table(stack, 'Stats', {
 allFns.forEach((fn) => statsTable.grantReadWriteData(fn));
 
 // ---------- Bedrock guardrail: form input, child wishes and the generated letter ----------
-// Messages and denied topics in the deployment language. The managed PROFANITY list covers English.
-const guardrailText =
-  config.language === 'es'
-    ? {
-        blockedInput: 'Santa no puede usar ese texto.',
-        blockedOutput: 'Santa no puede escribir eso.',
-        spoiler: 'Decir o insinuar que Papá Noel o Santa Claus no existe o que los regalos los compran los padres.',
-        spoilerExamples: ['Dile que Santa no existe', 'Cuéntale que los regalos son de sus padres'],
-        shaming: 'Amenazar, asustar, avergonzar o castigar a un niño, o decirle que no recibirá regalos por portarse mal.',
-        shamingExamples: ['Dile que este año no tendrá regalos por malo', 'Asústale para que obedezca'],
-      }
-    : {
-        blockedInput: "Santa can't use that text.",
-        blockedOutput: "Santa can't write that.",
-        spoiler: 'Saying or hinting that Santa Claus is not real or that the parents buy the presents.',
-        spoilerExamples: ["Tell him Santa isn't real", 'Tell her the presents come from her parents'],
-        shaming: "Threatening, scaring, shaming or punishing a child, or telling them they won't get presents for being naughty.",
-        shamingExamples: ['Tell him he gets no presents this year because he was bad', 'Scare her so she behaves'],
-      };
+// The managed PROFANITY list covers English.
+const guardrailText = {
+  blockedInput: "Santa can't use that text.",
+  blockedOutput: "Santa can't write that.",
+  spoiler: 'Saying or hinting that Santa Claus is not real or that the parents buy the presents.',
+  spoilerExamples: ["Tell him Santa isn't real", 'Tell her the presents come from her parents'],
+  shaming: "Threatening, scaring, shaming or punishing a child, or telling them they won't get presents for being naughty.",
+  shamingExamples: ['Tell him he gets no presents this year because he was bad', 'Scare her so she behaves'],
+};
 const guardrail = new CfnGuardrail(stack, 'SantaGuardrail', {
   name: `santa-guardrail-${stack.node.addr.slice(0, 8)}`,
   description: 'Blocks harmful content and prompt attacks in text that reaches Santa or parents',
@@ -193,15 +183,6 @@ for (const fn of [fns.dialer, fns.callOutcome, fns.sendLetter]) {
 fns.dialer.addToRolePolicy(
   new PolicyStatement({ actions: ['connect:StartOutboundVoiceContact'], resources: [connectInstanceArn, `${connectInstanceArn}/*`] }),
 );
-fns.flowHandler.addToRolePolicy(
-  new PolicyStatement({ actions: ['connect:DescribeContact'], resources: [`${connectInstanceArn}/contact/*`] }),
-);
-fns.flowHandler.addToRolePolicy(
-  new PolicyStatement({
-    actions: ['wisdom:UpdateSessionData'],
-    resources: [`arn:${Aws.PARTITION}:wisdom:${stack.region}:${stack.account}:session/*`],
-  }),
-);
 fns.sendLetter.grantInvoke(fns.flowHandler);
 
 // Let the contact flow call flow-handler.
@@ -282,7 +263,6 @@ function env(targets: IFunction[], values: Record<string, string>) {
 env(allFns, {
   BOOKINGS_TABLE: table.tableName,
   STATS_TABLE: statsTable.tableName,
-  SANTA_LANGUAGE: config.language,
   CALL_TIMEZONE: config.callTimezone,
 });
 env([fns.bookingsApi, fns.dialer, fns.callOutcome], {
@@ -314,7 +294,6 @@ env([fns.dialer], {
   CONNECT_CAMPAIGN_ID: config.connectCampaignId,
 });
 env([fns.flowHandler], {
-  QCONNECT_ASSISTANT_ID: config.qconnectAssistantId,
   SEND_LETTER_FUNCTION_NAME: fns.sendLetter.functionName,
 });
 env([fns.sendLetter], {
@@ -362,35 +341,15 @@ if (config.notifyConfigurationArn && config.notifyCodeConfigurationId) {
   );
 }
 
-// ---------- Cognito: SNS SMS settings ----------
-// The web app no longer uses Cognito's own SMS codes (SNS shared routes don't deliver to Spain since the
-// CNMC sender ID rule); phone verification goes through Notify above. These settings are kept so the user
-// pool is not replaced and Cognito can still send SMS if needed.
+// ---------- Cognito ----------
+// Phone verification goes through Notify (above), so the user pool has no SMS configuration and no SNS role.
 const authStack = Stack.of(backend.auth.resources.userPool);
-const smsExternalId = `santa-sms-${authStack.node.addr.slice(0, 12)}`;
-// The permission must be inline: Cognito checks it when the user pool is created, before a separate policy would exist.
-const smsRole = new Role(authStack, 'CognitoSmsRole', {
-  assumedBy: new ServicePrincipal('cognito-idp.amazonaws.com', {
-    conditions: { StringEquals: { 'sts:ExternalId': smsExternalId, 'aws:SourceAccount': authStack.account } },
-  }),
-  inlinePolicies: {
-    // Cognito publishes SMS directly to phone numbers, which has no narrower resource than "*".
-    SendSms: new PolicyDocument({ statements: [new PolicyStatement({ actions: ['sns:Publish'], resources: ['*'] })] }),
-  },
-});
 const cfnUserPool = backend.auth.resources.cfnResources.cfnUserPool;
-cfnUserPool.node.addDependency(smsRole);
-cfnUserPool.smsConfiguration = { snsCallerArn: smsRole.roleArn, externalId: smsExternalId, snsRegion: authStack.region };
-cfnUserPool.autoVerifiedAttributes = ['email', 'phone_number'];
-// Spanish, branded SMS text for Cognito's own SMS (not used by the web app).
-const smsCodeMessage = 'Llamada de Santa: tu código de verificación es {####}';
-cfnUserPool.smsVerificationMessage = smsCodeMessage;
-cfnUserPool.verificationMessageTemplate = {
-  ...(cfnUserPool.verificationMessageTemplate as CfnUserPool.VerificationMessageTemplateProperty),
-  smsMessage: smsCodeMessage,
-};
-// A changed phone number only takes effect after the SMS code is confirmed.
-cfnUserPool.userAttributeUpdateSettings = { attributesRequireVerificationBeforeUpdate: ['phone_number'] };
+cfnUserPool.autoVerifiedAttributes = ['email'];
+// A changed email only takes effect after its code is confirmed: the letter goes to that address. The phone
+// is not listed: Cognito requires SMS for that, and the backend only trusts a phone with phone_number_verified
+// set by its own Notify check (a client-side change leaves it unverified, so Santa will not call it).
+cfnUserPool.userAttributeUpdateSettings = { attributesRequireVerificationBeforeUpdate: ['email'] };
 // Only an admin can create users: an open sign-up would let anyone make Santa call a phone. Setting it here
 // keeps a redeploy from turning it back on if it was changed in the console.
 cfnUserPool.adminCreateUserConfig = {
@@ -412,7 +371,7 @@ backend.auth.resources.cfnResources.cfnIdentityPool.allowUnauthenticatedIdentiti
 if (config.cognitoEmailViaSes) {
   const identityName = config.sesIdentity || config.senderEmail;
   const identityArn = `arn:${Aws.PARTITION}:ses:${authStack.region}:${authStack.account}:identity/${identityName}`;
-  // One policy per deployment: several stacks can share the same SES identity (e.g. two languages).
+  // One policy per deployment: several stacks can share the same SES identity.
   const policyName = `AllowCognitoUserPoolEmail-${authStack.node.addr.slice(0, 8)}`;
   const policyDocument = JSON.stringify({
     Version: '2012-10-17',
@@ -497,8 +456,7 @@ backend.addOutput({
     requirePhoneVerification: config.requirePhoneVerification,
     // Shown to parents so they can save Santa's number in their contacts.
     santaCallerNumber: config.connectSourcePhoneNumber,
-    // The web app follows the same language, time zone and phone rules as the backend.
-    language: config.language,
+    // The web app follows the same time zone and phone rules as the backend.
     callTimezone: config.callTimezone,
     allowedPhonePrefixes: config.allowedPhonePrefixes.split(',').map((p) => p.trim()).filter(Boolean),
   },

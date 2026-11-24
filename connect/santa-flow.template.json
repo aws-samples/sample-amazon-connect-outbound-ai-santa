@@ -7,6 +7,28 @@
       "y": 40
     },
     "ActionMetadata": {
+      "set-voice": {
+        "position": {
+          "x": 876.8,
+          "y": 35.2
+        },
+        "children": [
+          "set-voice-language"
+        ],
+        "parameters": {
+          "TextToSpeechVoice": {
+            "languageCode": "en-US"
+          },
+          "TextToSpeechEngine": {
+            "voiceProvider": "connect:agentic"
+          }
+        },
+        "overrideConsoleVoice": true,
+        "fragments": {
+          "SetContactData": "set-voice-language"
+        },
+        "overrideLanguageAttribute": true
+      },
       "set-logging": {
         "position": {
           "x": 160,
@@ -16,24 +38,6 @@
       "set-recording": {
         "position": {
           "x": 400,
-          "y": 40
-        }
-      },
-      "set-language": {
-        "position": {
-          "x": 640,
-          "y": 40
-        }
-      },
-      "set-voice": {
-        "position": {
-          "x": 880,
-          "y": 40
-        }
-      },
-      "connect-assistant": {
-        "position": {
-          "x": 1120,
           "y": 40
         }
       },
@@ -55,41 +59,24 @@
         "position": {
           "x": 400,
           "y": 300
-        }
-      },
-      "santa-bot": {
-        "position": {
-          "x": 640,
-          "y": 300
-        }
-      },
-      "check-tool": {
-        "position": {
-          "x": 880,
-          "y": 300
-        }
-      },
-      "lambda-deliver": {
-        "position": {
-          "x": 1120,
-          "y": 300
         },
-        "parameters": {
-          "LambdaFunctionARN": {
-            "displayName": "flow-handler"
+        "conditions": [],
+        "conditionMetadata": [
+          {
+            "id": "41ae7b9d-9d84-446d-9ba6-2bb77b16c593",
+            "operator": {
+              "name": "Equals",
+              "value": "Equals",
+              "shortDisplay": "="
+            },
+            "value": "ok"
           }
-        },
-        "dynamicMetadata": {
-          "action": false,
-          "wishlist": true,
-          "behaviour": true,
-          "summary": true
-        }
+        ]
       },
       "lambda-no-response": {
         "position": {
-          "x": 880,
-          "y": 560
+          "x": 879.2,
+          "y": 583.2
         },
         "parameters": {
           "LambdaFunctionARN": {
@@ -100,123 +87,134 @@
           "action": false
         }
       },
+      "santa-agent": {
+        "position": {
+          "x": 630.4,
+          "y": 300
+        },
+        "isFriendlyName": false
+      },
+      "check-outcome": {
+        "position": {
+          "x": 883.2,
+          "y": 303.2
+        },
+        "conditionMetadata": [
+          {
+            "id": "f44f623f-27df-4bfc-a3c5-73840e6debdd",
+            "operator": {
+              "name": "Equals",
+              "value": "Equals",
+              "shortDisplay": "="
+            },
+            "value": "DeliverLetter"
+          },
+          {
+            "id": "2600c11d-f041-4c85-b798-b9cc0d4a10b2",
+            "operator": {
+              "name": "Equals",
+              "value": "Equals",
+              "shortDisplay": "="
+            },
+            "value": "NoConversation"
+          },
+          {
+            "id": "3f1c2a9e-5b7d-4c1e-9a2b-6d4e8f0a1b2c",
+            "operator": {
+              "name": "Equals",
+              "value": "Equals",
+              "shortDisplay": "="
+            },
+            "value": "Error"
+          }
+        ]
+      },
       "say-call-later": {
         "position": {
-          "x": 1120,
-          "y": 560
+          "x": 1109.6,
+          "y": 580
         }
       },
       "say-technical-problem": {
         "position": {
-          "x": 640,
-          "y": 560
+          "x": 632.8,
+          "y": 576
+        }
+      },
+      "lambda-deliver": {
+        "position": {
+          "x": 1104.8,
+          "y": 306.4
+        },
+        "parameters": {
+          "LambdaFunctionARN": {
+            "displayName": "flow-handler"
+          }
+        },
+        "dynamicMetadata": {
+          "action": false,
+          "wishlist": false,
+          "behaviour": false,
+          "summary": false
         }
       },
       "disconnect": {
         "position": {
-          "x": 1400,
-          "y": 300
+          "x": 1375.2,
+          "y": 324
         }
       },
-      "set-ai-session": {
+      "set-voice-language": {
         "position": {
-          "x": 1160,
-          "y": 220
-        }
+          "x": 876.8,
+          "y": 35.2
+        },
+        "dynamicParams": []
       }
-    }
+    },
+    "Annotations": []
   },
   "Actions": [
     {
-      "Identifier": "set-logging",
-      "Type": "UpdateFlowLoggingBehavior",
+      "Parameters": {
+        "TextToSpeechVoice": "JAMESON",
+        "TextToSpeechEngine": "connect:agentic"
+      },
+      "Identifier": "set-voice",
+      "Type": "UpdateContactTextToSpeechVoice",
+      "Transitions": {
+        "NextAction": "set-voice-language",
+        "Errors": [
+          {
+            "NextAction": "set-voice-language",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
       "Parameters": {
         "FlowLoggingBehavior": "Disabled"
       },
+      "Identifier": "set-logging",
+      "Type": "UpdateFlowLoggingBehavior",
       "Transitions": {
         "NextAction": "set-recording"
       }
     },
     {
-      "Identifier": "set-recording",
-      "Type": "UpdateContactRecordingBehavior",
       "Parameters": {
         "RecordingBehavior": {
           "RecordedParticipants": []
         }
       },
+      "Identifier": "set-recording",
+      "Type": "UpdateContactRecordingBehavior",
       "Transitions": {
-        "NextAction": "set-language"
+        "NextAction": "set-voice"
       }
     },
     {
-      "Identifier": "set-language",
-      "Type": "UpdateContactData",
-      "Parameters": {
-        "LanguageCode": "en-US"
-      },
-      "Transitions": {
-        "NextAction": "set-voice",
-        "Errors": [
-          {
-            "NextAction": "set-voice",
-            "ErrorType": "NoMatchingError"
-          }
-        ]
-      }
-    },
-    {
-      "Identifier": "set-voice",
-      "Type": "UpdateContactTextToSpeechVoice",
-      "Parameters": {
-        "TextToSpeechVoice": "Matthew",
-        "TextToSpeechEngine": "Generative"
-      },
-      "Transitions": {
-        "NextAction": "connect-assistant",
-        "Errors": [
-          {
-            "NextAction": "connect-assistant",
-            "ErrorType": "NoMatchingError"
-          }
-        ]
-      }
-    },
-    {
-      "Identifier": "connect-assistant",
-      "Type": "CreateWisdomSession",
-      "Parameters": {
-        "WisdomAssistantArn": "${ASSISTANT_ARN}"
-      },
-      "Transitions": {
-        "NextAction": "set-ai-session",
-        "Errors": [
-          {
-            "NextAction": "say-technical-problem",
-            "ErrorType": "NoMatchingError"
-          }
-        ]
-      }
-    },
-    {
-      "Parameters": {
-        "WisdomSessionArn": "$.Wisdom.SessionArn"
-      },
-      "Identifier": "set-ai-session",
-      "Type": "UpdateContactData",
-      "Transitions": {
-        "NextAction": "lambda-start",
-        "Errors": [
-          {
-            "NextAction": "say-technical-problem",
-            "ErrorType": "NoMatchingError"
-          }
-        ]
-      }
-    },
-    {
-      "Identifier": "lambda-start",
-      "Type": "InvokeLambdaFunction",
       "Parameters": {
         "LambdaFunctionARN": "${FLOW_HANDLER_ARN}",
         "InvocationTimeLimitSeconds": "8",
@@ -227,6 +225,8 @@
           "ResponseType": "STRING_MAP"
         }
       },
+      "Identifier": "lambda-start",
+      "Type": "InvokeLambdaFunction",
       "Transitions": {
         "NextAction": "check-start",
         "Errors": [
@@ -238,16 +238,16 @@
       }
     },
     {
-      "Identifier": "check-start",
-      "Type": "Compare",
       "Parameters": {
         "ComparisonValue": "$.External.result"
       },
+      "Identifier": "check-start",
+      "Type": "Compare",
       "Transitions": {
         "NextAction": "say-technical-problem",
         "Conditions": [
           {
-            "NextAction": "santa-bot",
+            "NextAction": "santa-agent",
             "Condition": {
               "Operator": "Equals",
               "Operands": [
@@ -265,47 +265,92 @@
       }
     },
     {
-      "Identifier": "santa-bot",
-      "Type": "ConnectParticipantWithLexBot",
       "Parameters": {
-        "Text": "Ho, ho, ho! Hello? Is anyone there?",
-        "LexV2Bot": {
-          "AliasArn": "${LEX_BOT_ALIAS_ARN}"
+        "LambdaFunctionARN": "${FLOW_HANDLER_ARN}",
+        "InvocationTimeLimitSeconds": "8",
+        "LambdaInvocationAttributes": {
+          "action": "noResponse"
         },
-        "LexSessionAttributes": {
-          "x-amz-lex:audio:start-timeout-ms:*:*": "6000",
-          "x-amz-lex:q-in-connect:ai-agent-arn": "${AI_AGENT_ARN}"
+        "ResponseValidation": {
+          "ResponseType": "STRING_MAP"
         }
       },
+      "Identifier": "lambda-no-response",
+      "Type": "InvokeLambdaFunction",
       "Transitions": {
-        "NextAction": "check-tool",
+        "NextAction": "say-call-later",
         "Errors": [
           {
-            "NextAction": "check-tool",
-            "ErrorType": "NoMatchingCondition"
-          },
-          {
-            "NextAction": "say-technical-problem",
+            "NextAction": "say-call-later",
             "ErrorType": "NoMatchingError"
           }
         ]
       }
     },
     {
-      "Identifier": "check-tool",
-      "Type": "Compare",
+      "Identifier": "santa-agent",
+      "Type": "ConnectParticipantWithAgenticCX",
       "Parameters": {
-        "ComparisonValue": "$.Lex.SessionAttributes.Tool"
+        "AgentConfiguration": {
+          "WorkspaceId": "${ACXD_WORKSPACE_ID}",
+          "ContextVariables": {
+            "childName": "$.External.childName",
+            "childNotes": "$.External.childNotes"
+          },
+          "ApplicationId": "${ACXD_APPLICATION_ID}",
+          "Alias": "${ACXD_DEPLOYMENT_ALIAS}"
+        },
+        "SpeechRecognitionConfiguration": {
+          "SpeechRecognitionEngine": "AMAZON_AGENTIC_VOICE"
+        },
+        "AudioFillerConfiguration": {
+          "Enabled": false
+        }
       },
       "Transitions": {
-        "NextAction": "disconnect",
+        "NextAction": "say-technical-problem",
+        "Errors": [
+          {
+            "NextAction": "say-technical-problem",
+            "ErrorType": "NoMatchingError"
+          },
+          {
+            "NextAction": "check-outcome",
+            "ErrorType": "NoMatchingCondition"
+          },
+          {
+            "NextAction": "say-technical-problem",
+            "ErrorType": "InputTimeLimitExceeded"
+          }
+        ],
+        "Conditions": [
+          {
+            "NextAction": "say-technical-problem",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "Escalation"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "ComparisonValue": "$.AgenticCX.ContextVariables.outcome"
+      },
+      "Identifier": "check-outcome",
+      "Type": "Compare",
+      "Transitions": {
+        "NextAction": "lambda-no-response",
         "Conditions": [
           {
             "NextAction": "lambda-deliver",
             "Condition": {
               "Operator": "Equals",
               "Operands": [
-                "EntregarCarta"
+                "DeliverLetter"
               ]
             }
           },
@@ -314,7 +359,16 @@
             "Condition": {
               "Operator": "Equals",
               "Operands": [
-                "Complete"
+                "NoConversation"
+              ]
+            }
+          },
+          {
+            "NextAction": "say-technical-problem",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "Error"
               ]
             }
           }
@@ -328,60 +382,53 @@
       }
     },
     {
-      "Identifier": "lambda-deliver",
-      "Type": "InvokeLambdaFunction",
+      "Parameters": {
+        "Text": "Ho, ho, ho! It's Santa. I'll call back a little later."
+      },
+      "Identifier": "say-call-later",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "disconnect",
+        "Errors": [
+          {
+            "NextAction": "disconnect",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Parameters": {
+        "Text": "Ho, ho, ho! The elves got tangled in the wires. Talk soon!"
+      },
+      "Identifier": "say-technical-problem",
+      "Type": "MessageParticipant",
+      "Transitions": {
+        "NextAction": "disconnect",
+        "Errors": [
+          {
+            "NextAction": "disconnect",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
       "Parameters": {
         "LambdaFunctionARN": "${FLOW_HANDLER_ARN}",
         "InvocationTimeLimitSeconds": "8",
         "LambdaInvocationAttributes": {
           "action": "deliver",
-          "wishlist": "$.Lex.SessionAttributes.wishlist",
-          "behaviour": "$.Lex.SessionAttributes.behaviour",
-          "summary": "$.Lex.SessionAttributes.summary"
+          "wishlist": "$.AgenticCX.ContextVariables.wishlist",
+          "behaviour": "$.AgenticCX.ContextVariables.behaviour",
+          "summary": "$.AgenticCX.ContextVariables.summary"
         },
         "ResponseValidation": {
           "ResponseType": "STRING_MAP"
         }
       },
-      "Transitions": {
-        "NextAction": "disconnect",
-        "Errors": [
-          {
-            "NextAction": "disconnect",
-            "ErrorType": "NoMatchingError"
-          }
-        ]
-      }
-    },
-    {
-      "Identifier": "lambda-no-response",
+      "Identifier": "lambda-deliver",
       "Type": "InvokeLambdaFunction",
-      "Parameters": {
-        "LambdaFunctionARN": "${FLOW_HANDLER_ARN}",
-        "InvocationTimeLimitSeconds": "8",
-        "LambdaInvocationAttributes": {
-          "action": "noResponse"
-        },
-        "ResponseValidation": {
-          "ResponseType": "STRING_MAP"
-        }
-      },
-      "Transitions": {
-        "NextAction": "say-call-later",
-        "Errors": [
-          {
-            "NextAction": "say-call-later",
-            "ErrorType": "NoMatchingError"
-          }
-        ]
-      }
-    },
-    {
-      "Identifier": "say-call-later",
-      "Type": "MessageParticipant",
-      "Parameters": {
-        "Text": "Ho, ho, ho! It's Santa. I'll call back a little later."
-      },
       "Transitions": {
         "NextAction": "disconnect",
         "Errors": [
@@ -393,26 +440,26 @@
       }
     },
     {
-      "Identifier": "say-technical-problem",
-      "Type": "MessageParticipant",
-      "Parameters": {
-        "Text": "Ho, ho, ho! The elves got tangled in the wires. Talk soon!"
-      },
-      "Transitions": {
-        "NextAction": "disconnect",
-        "Errors": [
-          {
-            "NextAction": "disconnect",
-            "ErrorType": "NoMatchingError"
-          }
-        ]
-      }
-    },
-    {
+      "Parameters": {},
       "Identifier": "disconnect",
       "Type": "DisconnectParticipant",
-      "Parameters": {},
       "Transitions": {}
+    },
+    {
+      "Parameters": {
+        "LanguageCode": "en-US"
+      },
+      "Identifier": "set-voice-language",
+      "Type": "UpdateContactData",
+      "Transitions": {
+        "NextAction": "lambda-start",
+        "Errors": [
+          {
+            "NextAction": "lambda-start",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
     }
   ]
 }

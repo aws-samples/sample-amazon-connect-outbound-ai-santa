@@ -78,21 +78,15 @@ export function applyNag(root: IConstruct): void {
       {
         id: 'AwsSolutions-IAM5',
         reason:
-          'Actions without a resource type: end-user-messaging:ValidateNotifyCodeVerification and sms-voice:DescribeNotifyTemplates (Notify phone verification), and sns:Publish for the Cognito SMS role, which publishes to phone numbers.',
+          'Actions without a resource type: end-user-messaging:ValidateNotifyCodeVerification and sms-voice:DescribeNotifyTemplates (Notify phone verification).',
         appliesTo: ['Resource::*'],
       },
       {
         id: 'AwsSolutions-IAM5',
-        reason: 'The Connect AI agent creates one session per call; the flow Lambda updates the session of the current contact.',
-        appliesTo: ['Resource::arn:<AWS::Partition>:wisdom:<AWS::Region>:<AWS::AccountId>:session/*'],
-      },
-      {
-        id: 'AwsSolutions-IAM5',
         reason:
-          'Contacts are created per call. Scoped to the one Connect instance of the sample (StartOutboundVoiceContact needs the instance and its child resources; DescribeContact the instance contacts).',
+          'Contacts are created per call. Scoped to the one Connect instance of the sample (StartOutboundVoiceContact needs the instance and its child resources).',
         appliesTo: [
           { regex: '/^Resource::arn:<AWS::Partition>:connect:<AWS::Region>:<AWS::AccountId>:instance\\/[^/]+\\/\\*$/' },
-          { regex: '/^Resource::arn:<AWS::Partition>:connect:<AWS::Region>:<AWS::AccountId>:instance\\/[^/]+\\/contact\\/\\*$/' },
         ],
       },
       {
